@@ -2,7 +2,9 @@
 // 数据库:Neon Postgres(本地与线上同一种)。
 // 想纯本地离线开发可临时把 provider 改回 "sqlite" 并用 DATABASE_URL="file:./dev.db"。
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // native = 本地;rhel-openssl-3.0.x = Vercel(serverless)运行时所需的 Linux 引擎
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
