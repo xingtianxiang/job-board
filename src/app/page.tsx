@@ -25,6 +25,7 @@ export default async function HomePage() {
   const colorOf: Record<string, string> = Object.fromEntries(users.map((u) => [u.name, u.color]));
   const highlights = computeHighlights(modules, features, colorMap);
   const moduleTitleByKey: Record<string, string> = Object.fromEntries(modules.map((m) => [m.key, m.title]));
+  const moduleOwnerByKey: Record<string, string | null> = Object.fromEntries(modules.map((m) => [m.key, m.ownerName]));
 
   const mapModules: MapModule[] = modules.map((m) => {
     const h = highlights.get(m.key);
@@ -125,7 +126,12 @@ export default async function HomePage() {
             )}
           </div>
           <div className="h-[34%] overflow-y-auto p-3">
-            <h2 className="mb-2 text-sm font-semibold text-slate-700">产品功能与状态</h2>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">产品功能与状态</h2>
+              <Link href="/archive" className="text-xs text-slate-400 hover:text-slate-700">
+                已归档 →
+              </Link>
+            </div>
             <FeatureBoard
               features={features.map((f) => ({
                 title: f.title,
@@ -134,6 +140,7 @@ export default async function HomePage() {
                 ownerName: f.ownerName,
               }))}
               colorOf={colorOf}
+              moduleOwnerByKey={moduleOwnerByKey}
             />
           </div>
         </div>

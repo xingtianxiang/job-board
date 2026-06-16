@@ -93,6 +93,7 @@ model Feature {
   moduleKey String?
   ownerName String?
   body      String  @default("")
+  archived  Boolean @default(false) // 完成项归档:不在主看板显示,移到 /archive
 
   @@unique([projectId, title])
 }

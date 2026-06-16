@@ -13,10 +13,18 @@ export async function getBoard(projectId: string) {
     prisma.module.findMany({ where: { projectId }, orderBy: { key: "asc" } }),
     prisma.moduleEdge.findMany({ where: { projectId } }),
     prisma.user.findMany({ where: { projectId }, include: { presence: true }, orderBy: { name: "asc" } }),
-    prisma.feature.findMany({ where: { projectId }, orderBy: { title: "asc" } }),
+    prisma.feature.findMany({ where: { projectId, archived: false }, orderBy: { title: "asc" } }),
     prisma.decision.findMany({ where: { projectId }, orderBy: { decidedAt: "desc" } }),
   ]);
   return { project, modules, edges, users, features, decisions };
+}
+
+/** 已归档的功能(给 /archive 页面)。 */
+export async function getArchivedFeatures(projectId: string) {
+  return prisma.feature.findMany({
+    where: { projectId, archived: true },
+    orderBy: { title: "asc" },
+  });
 }
 
 /** 名字 → 高亮色 的映射;模块按 ownerName 取色。 */
