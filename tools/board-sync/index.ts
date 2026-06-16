@@ -23,6 +23,30 @@ function git(cwd: string, cmd: string): string {
   }
 }
 
+// "我当前在改什么":当前分支未推/未合并的改动 + 未提交改动 → 文件列表
+function changedFiles(cwd: string): string[] {
+  const files = new Set<string>();
+  const add = (f: string) => {
+    const p = f.trim().replace(/\\/g, "/");
+    if (p) files.add(p.includes(" -> ") ? p.split(" -> ").pop()!.trim() : p);
+  };
+
+  // 未提交(已跟踪 + 未跟踪;-uall 让未跟踪文件逐个列出,不折叠成目录)
+  for (const line of git(cwd, "git status --porcelain -uall").split("\n")) {
+    if (line.trim()) add(line.slice(3));
+  }
+
+  // 已提交但未进主线的(在某个 base 之上)
+  const bases = ["origin/HEAD", "origin/main", "origin/master", "main", "master"];
+  const base = bases.find((b) => git(cwd, `git rev-parse --verify --quiet ${b}`) !== "");
+  const committed = base
+    ? git(cwd, `git diff --name-only ${base}...HEAD`)
+    : git(cwd, "git diff --name-only HEAD~1 HEAD");
+  for (const f of committed.split("\n")) if (f.trim()) add(f);
+
+  return [...files];
+}
+
 async function main() {
   // npm run 会把 cwd 切到包目录;用 INIT_CWD 还原用户实际所在目录,好让相对路径符合直觉
   const baseDir = process.env.INIT_CWD || process.cwd();
@@ -50,10 +74,14 @@ async function main() {
     commit: git(repoDir, "git rev-parse --short HEAD"),
     user: git(repoDir, "git config user.name"),
     email: git(repoDir, "git config user.email"),
+    changedFiles: changedFiles(repoDir),
   };
 
   console.log(`→ 上传 ${file}`);
   console.log(`  目标 ${url}/api/ingest   分支 ${gitInfo.branch || "?"}@${gitInfo.commit || "?"}`);
+  if (gitInfo.user && gitInfo.changedFiles.length) {
+    console.log(`  ${gitInfo.user} 当前改动 ${gitInfo.changedFiles.length} 个文件 → 命中的模块会自动高亮`);
+  }
 
   let res: Response;
   try {
@@ -81,7 +109,8 @@ async function main() {
   }
 
   console.log(
-    `✓ 成功:项目 ${data.project} —— 模块 ${data.counts?.modules}、边 ${data.counts?.edges}、决策 ${data.counts?.decisions}、功能 ${data.counts?.features}`,
+    `✓ 成功:项目 ${data.project} —— 模块 ${data.counts?.modules}、边 ${data.counts?.edges}、决策 ${data.counts?.decisions}、功能 ${data.counts?.features}` +
+      (data.counts?.gitActive ? `,按 git 高亮 ${data.counts.gitActive} 个模块` : ""),
   );
   if (data.warnings?.length) {
     console.log("  ⚠ 警告(不影响上传):");

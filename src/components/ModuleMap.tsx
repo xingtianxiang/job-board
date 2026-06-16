@@ -19,7 +19,9 @@ export type MapModule = {
   title: string;
   ownerName: string | null;
   color: string; // 高亮色(活跃时用)
-  active: boolean; // 是否有 doing 的 feature
+  active: boolean;
+  activeKind: "git" | "doing" | null;
+  activeBy: string | null;
   posX: number;
   posY: number;
 };
@@ -30,6 +32,8 @@ type NodeData = {
   ownerName: string | null;
   color: string;
   active: boolean;
+  activeKind: "git" | "doing" | null;
+  activeBy: string | null;
   mkey: string;
 };
 
@@ -37,6 +41,12 @@ function ModuleNode({ data }: { data: NodeData }) {
   const active = data.active;
   const bg = active ? data.color : "#ffffff";
   const fg = active ? readableText(data.color) : "#0f172a";
+  const badge =
+    data.activeKind === "git"
+      ? `✎ ${data.activeBy ?? ""} 在改`
+      : data.activeKind === "doing"
+        ? "▶ 进行中"
+        : null;
   return (
     <div
       style={{ background: bg, color: fg, boxShadow: active ? `0 0 0 3px ${data.color}55` : undefined }}
@@ -49,8 +59,8 @@ function ModuleNode({ data }: { data: NodeData }) {
       <div className="mt-0.5 text-[11px]" style={{ opacity: active ? 0.85 : 0.6 }}>
         负责:{data.ownerName ?? "—"}
       </div>
-      {active && (
-        <div className="mt-1 inline-block rounded-full bg-black/15 px-1.5 text-[10px] font-medium">▶ 进行中</div>
+      {badge && (
+        <div className="mt-1 inline-block rounded-full bg-black/15 px-1.5 text-[10px] font-medium">{badge}</div>
       )}
       <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
     </div>
@@ -74,7 +84,15 @@ export function ModuleMap({
         id: m.id,
         type: "module",
         position: { x: m.posX, y: m.posY },
-        data: { title: m.title, ownerName: m.ownerName, color: m.color, active: m.active, mkey: m.key },
+        data: {
+          title: m.title,
+          ownerName: m.ownerName,
+          color: m.color,
+          active: m.active,
+          activeKind: m.activeKind,
+          activeBy: m.activeBy,
+          mkey: m.key,
+        },
       })),
     [modules],
   );

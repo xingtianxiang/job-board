@@ -29,25 +29,53 @@ export function colorFor(ownerName: string | null | undefined, colorMap: Map<str
   return colorMap.get(ownerName) ?? NEUTRAL;
 }
 
-export type ModuleHighlight = { active: boolean; color: string; doers: string[] };
+export type ModuleHighlight = {
+  active: boolean;
+  color: string;
+  activeBy: string | null;
+  kind: "git" | "doing" | null;
+};
 
-// 高亮逻辑:模块若有 doing 状态的 feature → 取该 feature 负责人(无则模块负责人)的色;否则中性灰。
-// 即"颜色 = 正在做的东西",由 BOARD.md 的 feature 状态自动驱动,不靠手点。
+const ACTIVE_CUTOFF_MS = 14 * 24 * 60 * 60 * 1000; // git 改动高亮 14 天后淡出
+
+// 高亮逻辑(颜色 = 正在做的东西,自动派生,不靠手点):
+//  1) git 改动:某人当前分支改动命中的模块 → 高亮成那个人的色(14 天内有效);优先级最高。
+//  2) 否则若有 doing 的 feature → 取该 feature 负责人(无则模块负责人)的色。
+//  3) 否则中性灰。
 export function computeHighlights(
-  modules: { key: string; ownerName: string | null }[],
+  modules: { key: string; ownerName: string | null; activeUserName?: string | null; activeAt?: Date | null }[],
   features: { moduleKey: string | null; status: string; ownerName: string | null }[],
   colorMap: Map<string, string>,
 ): Map<string, ModuleHighlight> {
+  const now = Date.now();
   const result = new Map<string, ModuleHighlight>();
   for (const m of modules) {
+    const gitFresh =
+      m.activeUserName && m.activeAt && now - new Date(m.activeAt).getTime() < ACTIVE_CUTOFF_MS
+        ? m.activeUserName
+        : null;
+
+    if (gitFresh) {
+      result.set(m.key, {
+        active: true,
+        color: colorMap.get(gitFresh) || ACTIVE_FALLBACK,
+        activeBy: gitFresh,
+        kind: "git",
+      });
+      continue;
+    }
+
     const doing = features.filter((f) => f.status === "doing" && f.moduleKey === m.key);
-    const doers = Array.from(new Set(doing.map((f) => f.ownerName).filter(Boolean))) as string[];
     if (doing.length === 0) {
-      result.set(m.key, { active: false, color: NEUTRAL, doers: [] });
+      result.set(m.key, { active: false, color: NEUTRAL, activeBy: null, kind: null });
     } else {
-      const owner = doers[0] ?? m.ownerName ?? null;
-      const color = (owner && colorMap.get(owner)) || ACTIVE_FALLBACK;
-      result.set(m.key, { active: true, color, doers });
+      const owner = doing.map((f) => f.ownerName).find(Boolean) ?? m.ownerName ?? null;
+      result.set(m.key, {
+        active: true,
+        color: (owner && colorMap.get(owner)) || ACTIVE_FALLBACK,
+        activeBy: owner,
+        kind: "doing",
+      });
     }
   }
   return result;

@@ -35,6 +35,8 @@ export default async function HomePage() {
       ownerName: m.ownerName,
       color: h?.color ?? NEUTRAL,
       active: h?.active ?? false,
+      activeKind: h?.kind ?? null,
+      activeBy: h?.activeBy ?? null,
       posX: m.posX,
       posY: m.posY,
     };
@@ -61,8 +63,20 @@ export default async function HomePage() {
     ]),
   );
 
-  // "谁在做什么":从 doing 的 feature 自动派生
-  const activity: ActivityItem[] = features
+  // "谁在做什么":git 改动("X 在改 模块")+ doing 的 feature,都自动派生
+  const gitActivity: ActivityItem[] = modules
+    .filter((m) => highlights.get(m.key)?.kind === "git")
+    .map((m) => {
+      const by = highlights.get(m.key)!.activeBy!;
+      return {
+        title: "在改",
+        moduleKey: m.key,
+        moduleTitle: m.title,
+        ownerName: by,
+        color: colorOf[by] ?? NEUTRAL,
+      };
+    });
+  const doingActivity: ActivityItem[] = features
     .filter((f) => f.status === "doing")
     .map((f) => ({
       title: f.title,
@@ -71,6 +85,7 @@ export default async function HomePage() {
       ownerName: f.ownerName,
       color: f.ownerName ? colorOf[f.ownerName] ?? NEUTRAL : NEUTRAL,
     }));
+  const activity: ActivityItem[] = [...gitActivity, ...doingActivity];
 
   const members = users.map((u) => ({ name: u.name, color: u.color }));
 

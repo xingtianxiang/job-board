@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "令牌不正确" }, { status: 401 });
   }
 
-  let body: { boardMarkdown?: string };
+  let body: { boardMarkdown?: string; git?: { user?: string; changedFiles?: string[] } };
   try {
     body = await req.json();
   } catch {
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await applyBoardMarkdown(raw);
+    const result = await applyBoardMarkdown(raw, body.git);
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     if (e instanceof BoardParseError) {

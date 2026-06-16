@@ -19,7 +19,10 @@ export function ActivityBar({ items }: { items: ActivityItem[] }) {
         </span>
       ) : (
         items.map((it) => (
-          <div key={it.title} className="flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1">
+          <div
+            key={`${it.ownerName ?? "?"}|${it.moduleKey ?? "?"}|${it.title}`}
+            className="flex items-center gap-1.5 rounded-full bg-slate-50 px-2.5 py-1"
+          >
             <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: it.ownerName ? it.color : NEUTRAL }} />
             <span className="text-sm font-medium text-slate-700">{it.ownerName ?? "未指派"}</span>
             <span className="text-sm text-slate-500">{it.title}</span>

@@ -17,6 +17,7 @@ modules:
       只负责"显示与交互"。
       不做坐标变换、不碰设备 IO —— 需要变换时调用 transform 模块。
     dependsOn: [transform]
+    paths: [src/scene/**]
     doc: |
       ## 职责
       - 基于 VTK 的渲染管线:工件网格、焊缝、机器人路径
@@ -35,6 +36,7 @@ modules:
     summary: 各坐标系之间的命名变换(机器人基座 / 工件 / 相机 / TCP)
     boundary: |
       坐标变换的"单一真源"。任何坐标系转换都必须经过这里,禁止各模块自己手算。
+    paths: [src/transform/**]
     doc: |
       ## 命名坐标系
       base / workpiece / camera / tcp —— 一律显式命名,不允许裸 double。
@@ -47,6 +49,7 @@ modules:
     summary: 封装 camera_sdk,取点云 / 图像
     boundary: 只负责采集与标定输出;不做工艺判断。
     dependsOn: [transform]
+    paths: [src/camera/**, camera_sdk/**]
     doc: |
       ## 来源
       复用现有 camera_sdk(同级目录)。
@@ -56,6 +59,7 @@ modules:
     summary: 焊缝识别、路径规划、工艺参数
     boundary: 业务核心;不直接碰 GUI,产出供 scene_widget 显示的数据。
     dependsOn: [transform, camera]
+    paths: [src/weld/**]
 
 decisions:
   - title: 单进程 C++ 终局
