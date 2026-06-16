@@ -40,6 +40,7 @@ export async function applyBoardMarkdown(raw: string) {
         ownerName: m.owner ?? null,
         doc: m.doc,
         functions: JSON.stringify(m.functions),
+        paths: JSON.stringify(m.paths),
         ...pos,
       },
       update: {
@@ -48,6 +49,7 @@ export async function applyBoardMarkdown(raw: string) {
         boundary: m.boundary,
         doc: m.doc,
         functions: JSON.stringify(m.functions),
+        paths: JSON.stringify(m.paths),
         ...(m.owner ? { ownerName: m.owner } : {}),
       },
     });

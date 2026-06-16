@@ -10,7 +10,8 @@ export const PALETTE: { name: string; hex: string }[] = [
   { name: "棕", hex: "#a16207" },
 ];
 
-export const NEUTRAL = "#94a3b8"; // 无主模块的中性色
+export const NEUTRAL = "#94a3b8"; // 非活跃模块的中性色
+export const ACTIVE_FALLBACK = "#f59e0b"; // 正在做但负责人无色时的兜底活跃色
 
 /** 给定背景 hex,返回可读的前景色(黑/白)。 */
 export function readableText(hex: string): string {

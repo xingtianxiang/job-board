@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { NEUTRAL } from "@/lib/colors";
+import { NEUTRAL, ACTIVE_FALLBACK } from "@/lib/colors";
 
 /** 主项目:MVP 单项目,取第一个。无项目(还没 sync 过)返回 null。 */
 export async function getPrimaryProject() {
@@ -27,6 +27,30 @@ export function buildColorMap(users: { name: string; color: string }[]): Map<str
 export function colorFor(ownerName: string | null | undefined, colorMap: Map<string, string>): string {
   if (!ownerName) return NEUTRAL;
   return colorMap.get(ownerName) ?? NEUTRAL;
+}
+
+export type ModuleHighlight = { active: boolean; color: string; doers: string[] };
+
+// 高亮逻辑:模块若有 doing 状态的 feature → 取该 feature 负责人(无则模块负责人)的色;否则中性灰。
+// 即"颜色 = 正在做的东西",由 BOARD.md 的 feature 状态自动驱动,不靠手点。
+export function computeHighlights(
+  modules: { key: string; ownerName: string | null }[],
+  features: { moduleKey: string | null; status: string; ownerName: string | null }[],
+  colorMap: Map<string, string>,
+): Map<string, ModuleHighlight> {
+  const result = new Map<string, ModuleHighlight>();
+  for (const m of modules) {
+    const doing = features.filter((f) => f.status === "doing" && f.moduleKey === m.key);
+    const doers = Array.from(new Set(doing.map((f) => f.ownerName).filter(Boolean))) as string[];
+    if (doing.length === 0) {
+      result.set(m.key, { active: false, color: NEUTRAL, doers: [] });
+    } else {
+      const owner = doers[0] ?? m.ownerName ?? null;
+      const color = (owner && colorMap.get(owner)) || ACTIVE_FALLBACK;
+      result.set(m.key, { active: true, color, doers });
+    }
+  }
+  return result;
 }
 
 /** 模块单页:按 key 取模块及其挂靠的 features/decisions。 */

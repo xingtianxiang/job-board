@@ -20,6 +20,7 @@ const ModuleSchema = z.object({
   doc: z.string().optional().default(""),
   dependsOn: z.array(z.string()).optional().default([]),
   functions: z.array(FunctionSchema).optional().default([]),
+  paths: z.array(z.string()).optional().default([]),
 });
 
 const DecisionSchema = z.object({

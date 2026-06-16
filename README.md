@@ -42,13 +42,20 @@ npm run sync -- ../weld_KAIERDA/BOARD.md
 
 ---
 
-## 2. BOARD.md 怎么写
+## 2. BOARD.md 怎么写 / 怎么更新
 
-见 [`BOARD.sample.md`](./BOARD.sample.md)。要点:
+格式见 [`BOARD.sample.md`](./BOARD.sample.md);生成/更新的**指令模板**见 [`BOARD_PROMPT.md`](./BOARD_PROMPT.md)(工具无关,Claude / Codex / Cursor 都能用)。
 
+**更新流程(很轻):**
+1. 在你的项目里对 AI 说:“按 BOARD_PROMPT.md 增量更新 BOARD.md”。它会读现有 BOARD.md,只改变化的部分。
+2. 回 weld-board 目录 `npm run sync -- <你的项目>/BOARD.md`(线上加 `BOARD_URL`)。
+3. 刷新看板即生效。
+
+**关键约定:**
 - 文件顶部一对 `---` 之间是 **YAML 结构化数据**(网站读这部分);下面正文随便写。
-- 维护流程:**本地用 AI 扫 docs 起草 YAML → `npm run sync` 上传**。改完重跑 sync 即可。
-- 重跑 sync 是安全的:按 `key`/`title` 合并,**不会冲掉**你在网站上拖好的节点位置、也不会冲掉 UI 里认领的负责人(除非 BOARD.md 显式写了 `owner`)。
+- **高亮 = 正在做的东西,自动派生**:把某个 feature 标成 `status: doing` 并写 `owner`,该模块就会在看板上自动高亮成那个人的颜色。不做了改回 `todo`/`done`。**这一行就是日常最常改的地方**,改完 sync 一下即可,不用在网页上点。
+- 重跑 sync 安全:按 `key`/`title` 合并,**不会冲掉**你在网站上拖好的节点位置。
+- “负责人”是模块旁的标签,可在 BOARD.md 写 `owner`,也可在看板抽屉里直接改派。
 
 ---
 

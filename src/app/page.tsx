@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getBoard, getPrimaryProject, buildColorMap, colorFor } from "@/lib/data";
+import { getBoard, getPrimaryProject, buildColorMap, colorFor, computeHighlights } from "@/lib/data";
+import { NEUTRAL } from "@/lib/colors";
 import { Markdown } from "@/components/Markdown";
 import { BoardClient } from "@/components/BoardClient";
-import { PresenceBar, type PresenceItem } from "@/components/PresenceBar";
+import { ActivityBar, type ActivityItem } from "@/components/ActivityBar";
 import { FeatureBoard } from "@/components/FeatureBoard";
 import { DecisionPanel } from "@/components/DecisionPanel";
 import type { MapModule, MapEdge } from "@/components/ModuleMap";
@@ -22,16 +23,22 @@ export default async function HomePage() {
   const { modules, edges, users, features, decisions } = await getBoard(project.id);
   const colorMap = buildColorMap(users);
   const colorOf: Record<string, string> = Object.fromEntries(users.map((u) => [u.name, u.color]));
+  const highlights = computeHighlights(modules, features, colorMap);
+  const moduleTitleByKey: Record<string, string> = Object.fromEntries(modules.map((m) => [m.key, m.title]));
 
-  const mapModules: MapModule[] = modules.map((m) => ({
-    id: m.id,
-    key: m.key,
-    title: m.title,
-    ownerName: m.ownerName,
-    color: colorFor(m.ownerName, colorMap),
-    posX: m.posX,
-    posY: m.posY,
-  }));
+  const mapModules: MapModule[] = modules.map((m) => {
+    const h = highlights.get(m.key);
+    return {
+      id: m.id,
+      key: m.key,
+      title: m.title,
+      ownerName: m.ownerName,
+      color: h?.color ?? NEUTRAL,
+      active: h?.active ?? false,
+      posX: m.posX,
+      posY: m.posY,
+    };
+  });
   const mapEdges: MapEdge[] = edges.map((e) => ({ id: e.id, source: e.fromId, target: e.toId, kind: e.kind }));
 
   const drawerByKey: Record<string, DrawerData> = Object.fromEntries(
@@ -43,7 +50,7 @@ export default async function HomePage() {
         summary: m.summary,
         boundary: m.boundary,
         ownerName: m.ownerName,
-        color: colorFor(m.ownerName, colorMap),
+        color: highlights.get(m.key)?.color ?? colorFor(m.ownerName, colorMap),
         features: features
           .filter((f) => f.moduleKey === m.key)
           .map((f) => ({ title: f.title, status: f.status })),
@@ -54,14 +61,18 @@ export default async function HomePage() {
     ]),
   );
 
-  const presenceInitial: PresenceItem[] = users.map((u) => ({
-    userId: u.id,
-    name: u.name,
-    color: u.color,
-    currentTask: u.presence?.currentTask ?? "",
-    moduleKey: u.presence?.moduleKey ?? null,
-    updatedAt: u.presence?.updatedAt?.toISOString() ?? null,
-  }));
+  // "谁在做什么":从 doing 的 feature 自动派生
+  const activity: ActivityItem[] = features
+    .filter((f) => f.status === "doing")
+    .map((f) => ({
+      title: f.title,
+      moduleKey: f.moduleKey,
+      moduleTitle: f.moduleKey ? moduleTitleByKey[f.moduleKey] ?? f.moduleKey : null,
+      ownerName: f.ownerName,
+      color: f.ownerName ? colorOf[f.ownerName] ?? NEUTRAL : NEUTRAL,
+    }));
+
+  const members = users.map((u) => ({ name: u.name, color: u.color }));
 
   const lastSync = project.lastSyncedAt
     ? new Date(project.lastSyncedAt).toLocaleString("zh-CN")
@@ -80,16 +91,12 @@ export default async function HomePage() {
             {user.name}
           </span>
           <Link href="/onboarding" className="text-xs text-slate-400 hover:text-slate-700">
-            切换/设置
+            切换
           </Link>
         </div>
       </header>
 
-      <PresenceBar
-        currentUserId={user.id}
-        modules={modules.map((m) => ({ key: m.key, title: m.title }))}
-        initial={presenceInitial}
-      />
+      <ActivityBar items={activity} />
 
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
@@ -99,7 +106,7 @@ export default async function HomePage() {
                 还没有模块。维护好 BOARD.md 后,本地 <code className="mx-1 rounded bg-white px-1">npm run sync</code> 上传即可成图。
               </div>
             ) : (
-              <BoardClient modules={mapModules} edges={mapEdges} drawerByKey={drawerByKey} />
+              <BoardClient modules={mapModules} edges={mapEdges} drawerByKey={drawerByKey} members={members} />
             )}
           </div>
           <div className="h-[34%] overflow-y-auto p-3">

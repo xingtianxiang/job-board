@@ -15,11 +15,11 @@ export default async function OnboardingPage({
   searchParams: { e?: string };
 }) {
   const project = await getPrimaryProject();
-  const modules = project
-    ? await prisma.module.findMany({
+  const members = project
+    ? await prisma.user.findMany({
         where: { projectId: project.id },
-        select: { key: true, title: true, ownerName: true },
-        orderBy: { key: "asc" },
+        select: { id: true, name: true, color: true },
+        orderBy: { name: "asc" },
       })
     : [];
   const passcodeRequired = Boolean(process.env.TEAM_PASSCODE);
@@ -29,13 +29,11 @@ export default async function OnboardingPage({
     <main className="flex min-h-screen items-center justify-center bg-slate-50 p-4">
       <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
         <h1 className="text-lg font-bold text-slate-900">进入 {project?.name ?? "团队看板"}</h1>
-        <p className="mb-4 mt-1 text-sm text-slate-500">
-          选个名字和高亮色,勾上你负责的模块。不用密码,后面可随时改。
-        </p>
+        <p className="mb-4 mt-1 text-sm text-slate-500">点你的名字即可进入。第一次来就"新增成员"。</p>
         {error && (
           <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
         )}
-        <OnboardingForm modules={modules} passcodeRequired={passcodeRequired} />
+        <OnboardingForm members={members} passcodeRequired={passcodeRequired} />
       </div>
     </main>
   );

@@ -17,10 +17,14 @@ export type DrawerData = {
 
 export function ModuleDrawer({
   data,
+  members,
   onClose,
+  onAssignOwner,
 }: {
   data: DrawerData | null;
+  members: { name: string; color: string }[];
   onClose: () => void;
+  onAssignOwner: (moduleKey: string, name: string | null) => void;
 }) {
   if (!data) return null;
   return (
@@ -31,10 +35,21 @@ export function ModuleDrawer({
           <div>
             <div className="text-xs text-slate-500">模块</div>
             <h2 className="text-lg font-bold text-slate-900">{data.title}</h2>
-            <div className="mt-1 flex items-center gap-1.5 text-sm">
-              <span className="inline-block h-3 w-3 rounded-full" style={{ background: data.color }} />
-              <span className="text-slate-600">{data.ownerName ?? "未认领"}</span>
-            </div>
+            <label className="mt-2 flex items-center gap-1.5 text-sm">
+              <span className="text-slate-500">负责人</span>
+              <select
+                value={data.ownerName ?? ""}
+                onChange={(e) => onAssignOwner(data.key, e.target.value || null)}
+                className="rounded border bg-white px-1.5 py-0.5 text-sm text-slate-700"
+              >
+                <option value="">未指派</option>
+                {members.map((m) => (
+                  <option key={m.name} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
           <button onClick={onClose} className="rounded p-1 text-slate-400 hover:bg-black/5 hover:text-slate-700">
             <X size={18} />

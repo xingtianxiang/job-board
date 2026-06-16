@@ -18,24 +18,40 @@ export type MapModule = {
   key: string;
   title: string;
   ownerName: string | null;
-  color: string;
+  color: string; // 高亮色(活跃时用)
+  active: boolean; // 是否有 doing 的 feature
   posX: number;
   posY: number;
 };
 export type MapEdge = { id: string; source: string; target: string; kind: string };
 
-type NodeData = { title: string; ownerName: string | null; color: string; mkey: string };
+type NodeData = {
+  title: string;
+  ownerName: string | null;
+  color: string;
+  active: boolean;
+  mkey: string;
+};
 
 function ModuleNode({ data }: { data: NodeData }) {
-  const fg = readableText(data.color);
+  const active = data.active;
+  const bg = active ? data.color : "#ffffff";
+  const fg = active ? readableText(data.color) : "#0f172a";
   return (
     <div
-      style={{ background: data.color, color: fg }}
-      className="min-w-[128px] cursor-pointer rounded-lg border border-black/10 px-3 py-2 text-center shadow-sm"
+      style={{ background: bg, color: fg, boxShadow: active ? `0 0 0 3px ${data.color}55` : undefined }}
+      className={`min-w-[144px] cursor-pointer rounded-lg border px-3 py-2 text-center ${
+        active ? "border-black/10" : "border-slate-300"
+      }`}
     >
       <Handle type="target" position={Position.Top} className="!bg-slate-400" />
       <div className="text-sm font-semibold leading-tight">{data.title}</div>
-      <div className="text-[11px] opacity-80">{data.ownerName ?? "未认领"}</div>
+      <div className="mt-0.5 text-[11px]" style={{ opacity: active ? 0.85 : 0.6 }}>
+        负责:{data.ownerName ?? "—"}
+      </div>
+      {active && (
+        <div className="mt-1 inline-block rounded-full bg-black/15 px-1.5 text-[10px] font-medium">▶ 进行中</div>
+      )}
       <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
     </div>
   );
@@ -58,7 +74,7 @@ export function ModuleMap({
         id: m.id,
         type: "module",
         position: { x: m.posX, y: m.posY },
-        data: { title: m.title, ownerName: m.ownerName, color: m.color, mkey: m.key },
+        data: { title: m.title, ownerName: m.ownerName, color: m.color, active: m.active, mkey: m.key },
       })),
     [modules],
   );

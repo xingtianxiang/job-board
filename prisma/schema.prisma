@@ -37,6 +37,7 @@ model Module {
   ownerName String? // 负责人名字(与 User.name 匹配后取其高亮色)
   doc       String   @default("") // 完整文档(markdown),展示在模块单页
   functions String   @default("[]") // 函数级条目 JSON: [{name, note}]
+  paths     String   @default("[]") // 该模块对应的代码路径 glob(JSON),给"按 git 改动高亮"预留
   posX      Float    @default(0)
   posY      Float    @default(0)
   edgesOut  ModuleEdge[] @relation("edgeFrom")
