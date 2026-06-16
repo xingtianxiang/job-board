@@ -70,20 +70,30 @@
    BOARD_INGEST_TOKEN=找负责人私下要
    ```
 
-**日常更新(在 job-board 目录里跑):**
-- 你只要**正常写代码**。想把"我在改哪块"推上看板时:
-  - PowerShell:
-    ```powershell
-    $env:BOARD_URL="https://job-board-phi-sage.vercel.app"
-    npm run sync -- 你的项目路径\BOARD.md
-    ```
-  - 例如项目和 job-board 同级时:`npm run sync -- ..\weld_KAIERDA\BOARD.md`
-- 它会自动看你**当前(未提交)改了哪些文件** → 对应模块高亮成你的色;并把 `BOARD.md` 里的进度同步上去。
+**日常用(在 job-board 目录里):**
 
-**更新看板内容(模块/进度/决策)**:改项目根目录的 `BOARD.md` 即可。可以直接让你的 AI(Claude / Codex 都行)帮你改——对它说:
+- **手动**:想刷新看板就跑一下(网址已封装好,默认同步同级的 `..\weld_KAIERDA\BOARD.md`):
+  ```powershell
+  .\update.ps1
+  ```
+  它会看你**当前(未提交)改了哪些文件** → 对应模块在看板上标成 `✎ 在改`(你的色),并同步 `BOARD.md` 里的进度。
+
+- **自动(推荐,真·零维护)**:挂个 Windows 定时任务,每 10 分钟自动跑一次。**注册一次**:
+  ```powershell
+  $script = "C:\你的路径\job-board\update.ps1"   # 换成你机器上的实际路径
+  $action  = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$script`""
+  $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 10)
+  Register-ScheduledTask -TaskName "weld-board-sync" -Action $action -Trigger $trigger
+  ```
+  取消:`Unregister-ScheduledTask -TaskName weld-board-sync -Confirm:$false`
+  (还有 git 钩子等方式,见 job-board 里的 `AUTO_SYNC.md`。)
+
+**更新看板内容(模块/进度/决策)**:改项目根目录的 `BOARD.md`。可让你的 AI(Claude / Codex 都行)帮你改——对它说:
 > "按 BOARD_PROMPT.md 增量更新 BOARD.md"
 
-(`BOARD_PROMPT.md` 在 job-board 目录里,是一份工具无关的指令模板。)改完再 `npm run sync` 一下就生效。
+(`BOARD_PROMPT.md` 在 job-board 目录里,是一份工具无关的指令模板。)改完跑一下 `.\update.ps1`(或等定时任务)就生效。
+
+> ⚠ **两人改到同一模块**时,看板会标 `⚠ N 人在改` 提醒撞车——去对一下边界。结构(模块划分)以 main 上的 BOARD.md 为准。
 
 ---
 
@@ -92,7 +102,8 @@
 - **我的高亮是橙色,不是我选的颜色?** 你的成员名字和 git 用户名(`git config user.name`)对不上。把成员名改成和 git 一致(可在登录页删掉旧的、重新"新增成员")。
 - **整张图都被点亮了?** 一般是你在一个改了很多文件的大分支上;聚焦到具体改动(未提交的)时就只亮那几个。
 - **完成项太多?** 点"全部归档"收起,"已归档 →"里能找回。
-- **改了看板没变?** 内容更新要在本地 `npm run sync` 一下;网站功能更新由负责人部署后**强刷(Ctrl+F5)**即可。
-- **登录要密码吗?** 不要,内部工具,选名字即可。
+- **改了看板没变?** 内容更新要本地跑一下 `.\update.ps1`(或挂了定时任务就自动);网站功能更新由负责人部署后**强刷(Ctrl+F5)**即可。
+- **看到 `⚠ N 人在改`?** 说明你和别人动到了同一个模块,去对一下边界、别撞车——这是正常的提醒。
+- **登录要密码吗?** 已有名字**直接点**,不用密码;**"+ 新增成员"时要输一次团队口令**(找负责人要)。
 
 有问题直接找项目负责人。
