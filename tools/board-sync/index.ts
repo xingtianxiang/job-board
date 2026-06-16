@@ -23,28 +23,34 @@ function git(cwd: string, cmd: string): string {
   }
 }
 
-// "我当前在改什么":当前分支未推/未合并的改动 + 未提交改动 → 文件列表
+// "我当前在改什么":优先取【未提交改动】(最能代表此刻在做什么);
+// 没有未提交时,才回退到"当前分支相对主线的改动"。
 function changedFiles(cwd: string): string[] {
-  const files = new Set<string>();
-  const add = (f: string) => {
+  const norm = (f: string) => {
     const p = f.trim().replace(/\\/g, "/");
-    if (p) files.add(p.includes(" -> ") ? p.split(" -> ").pop()!.trim() : p);
+    return p ? (p.includes(" -> ") ? p.split(" -> ").pop()!.trim() : p) : "";
   };
 
-  // 未提交(已跟踪 + 未跟踪;-uall 让未跟踪文件逐个列出,不折叠成目录)
+  // 1) 未提交(已跟踪 + 未跟踪;-uall 让未跟踪文件逐个列出,不折叠成目录)
+  const uncommitted = new Set<string>();
   for (const line of git(cwd, "git status --porcelain -uall").split("\n")) {
-    if (line.trim()) add(line.slice(3));
+    const f = norm(line.slice(3));
+    if (f) uncommitted.add(f);
   }
+  if (uncommitted.size) return [...uncommitted];
 
-  // 已提交但未进主线的(在某个 base 之上)
+  // 2) 回退:当前分支相对主线的已提交改动
   const bases = ["origin/HEAD", "origin/main", "origin/master", "main", "master"];
   const base = bases.find((b) => git(cwd, `git rev-parse --verify --quiet ${b}`) !== "");
   const committed = base
     ? git(cwd, `git diff --name-only ${base}...HEAD`)
     : git(cwd, "git diff --name-only HEAD~1 HEAD");
-  for (const f of committed.split("\n")) if (f.trim()) add(f);
-
-  return [...files];
+  const out = new Set<string>();
+  for (const f of committed.split("\n")) {
+    const n = norm(f);
+    if (n) out.add(n);
+  }
+  return [...out];
 }
 
 async function main() {
