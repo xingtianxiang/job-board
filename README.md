@@ -9,14 +9,19 @@
 
 ---
 
-## 1. 本地开发(SQLite,零配置)
+## 1. 本地开发(Neon Postgres)
+
+1. 在 [neon.tech](https://neon.tech) 建一个免费库,复制连接串。
+2. `cp .env.example .env`,把 `DATABASE_URL` 填成 Neon 连接串(本地直接用 Neon,Windows 无需装 Docker)。
 
 ```bash
 cd weld-board
 npm install
-npm run db:push          # 按 schema 建本地 SQLite 表(prisma/dev.db)
+npm run db:push          # 按 schema 在 Neon 建表
 npm run dev              # http://localhost:3000
 ```
+
+> 想纯本地离线(不连网)开发?把 `prisma/schema.prisma` 的 provider 改回 `sqlite`、`DATABASE_URL="file:./dev.db"`、再 `npm run db:push` 即可。
 
 首次打开会跳到 `/onboarding`:填名字、选高亮色(没数据时还没有模块可勾)。
 
@@ -49,18 +54,13 @@ npm run sync -- ../weld_KAIERDA/BOARD.md
 
 ## 3. 部署到 Vercel + Neon(公网网址,免运维)
 
-### 3.1 数据库换成 Neon Postgres
+### 3.1 数据库:Neon Postgres
 
-1. 在 [neon.tech](https://neon.tech) 建一个免费库,拿到连接串。
-2. 把 `prisma/schema.prisma` 里的 datasource provider 从 `sqlite` 改成 `postgresql`:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-3. `DATABASE_URL` 填 Neon 连接串(形如 `postgresql://...?sslmode=require`)。
-4. 本地执行 `npx prisma migrate dev --name init` 生成迁移(或部署时 `prisma migrate deploy`)。
+代码已是 Postgres 版,**无需改 schema**。
+
+1. 在 [neon.tech](https://neon.tech) 建免费库,拿到连接串(形如 `postgresql://...?sslmode=require`)。
+2. 本地 `.env` 和 Vercel 环境变量里的 `DATABASE_URL` 都填它。
+3. 建表:本地 `npm run db:push` 跑一次(对着 Neon 库即可建好所有表)。
 
 ### 3.2 部署(两选一,都行)
 

@@ -1,11 +1,12 @@
 // weld-board 数据模型 —— 这就是"单一真源"。
-// 本地用 SQLite;部署到 Neon 时把 provider 改成 "postgresql"(模型无需改)。
+// 数据库:Neon Postgres(本地与线上同一种)。
+// 想纯本地离线开发可临时把 provider 改回 "sqlite" 并用 DATABASE_URL="file:./dev.db"。
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
