@@ -21,6 +21,8 @@ export type MapModule = {
   active: boolean;
   activeKind: "git" | "doing" | null;
   activeBy: string | null;
+  activeUsers: string[];
+  conflict: boolean;
   posX: number;
   posY: number;
 };
@@ -33,22 +35,27 @@ type NodeData = {
   active: boolean;
   activeKind: "git" | "doing" | null;
   activeBy: string | null;
+  activeUsers: string[];
+  conflict: boolean;
   mkey: string;
 };
 
 function ModuleNode({ data }: { data: NodeData }) {
   const active = data.active;
+  const conflict = data.conflict;
   const bg = active ? data.color : "#ffffff";
   const fg = active ? readableText(data.color) : "#0f172a";
-  const badge =
-    data.activeKind === "git"
+  const ring = conflict ? "0 0 0 3px #dc2626" : active ? `0 0 0 3px ${data.color}55` : undefined;
+  const badge = conflict
+    ? `⚠ ${data.activeUsers.length} 人在改`
+    : data.activeKind === "git"
       ? `✎ ${data.activeBy ?? ""} 在改`
       : data.activeKind === "doing"
         ? "▶ 进行中"
         : null;
   return (
     <div
-      style={{ background: bg, color: fg, boxShadow: active ? `0 0 0 3px ${data.color}55` : undefined }}
+      style={{ background: bg, color: fg, boxShadow: ring }}
       className={`min-w-[144px] cursor-pointer rounded-lg border px-3 py-2 text-center ${
         active ? "border-black/10" : "border-slate-300"
       }`}
@@ -59,7 +66,13 @@ function ModuleNode({ data }: { data: NodeData }) {
         负责:{data.ownerName ?? "—"}
       </div>
       {badge && (
-        <div className="mt-1 inline-block rounded-full bg-black/15 px-1.5 text-[10px] font-medium">{badge}</div>
+        <div
+          className={`mt-1 inline-block rounded-full px-1.5 text-[10px] font-medium ${
+            conflict ? "bg-red-600 text-white" : "bg-black/15"
+          }`}
+        >
+          {badge}
+        </div>
       )}
       <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
     </div>
@@ -90,6 +103,8 @@ export function ModuleMap({
           active: m.active,
           activeKind: m.activeKind,
           activeBy: m.activeBy,
+          activeUsers: m.activeUsers,
+          conflict: m.conflict,
           mkey: m.key,
         },
       })),

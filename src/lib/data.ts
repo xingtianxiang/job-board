@@ -40,34 +40,47 @@ export function colorFor(ownerName: string | null | undefined, colorMap: Map<str
 export type ModuleHighlight = {
   active: boolean;
   color: string;
-  activeBy: string | null;
+  activeUsers: string[]; // 正在改这块的人(新鲜的)
+  conflict: boolean; // ≥2 人在改 = 撞车
+  activeBy: string | null; // 首个(兼容)
   kind: "git" | "doing" | null;
 };
 
 const ACTIVE_CUTOFF_MS = 14 * 24 * 60 * 60 * 1000; // git 改动高亮 14 天后淡出
 
 // 高亮逻辑(颜色 = 正在做的东西,自动派生,不靠手点):
-//  1) git 改动:某人当前分支改动命中的模块 → 高亮成那个人的色(14 天内有效);优先级最高。
+//  1) git 改动:activeUsers 里 14 天内新鲜的人 → 高亮;≥2 人 = 冲突(撞车);优先级最高。
 //  2) 否则若有 doing 的 feature → 取该 feature 负责人(无则模块负责人)的色。
 //  3) 否则中性灰。
 export function computeHighlights(
-  modules: { key: string; ownerName: string | null; activeUserName?: string | null; activeAt?: Date | null }[],
+  modules: { key: string; ownerName: string | null; activeUsers?: string | null }[],
   features: { moduleKey: string | null; status: string; ownerName: string | null }[],
   colorMap: Map<string, string>,
 ): Map<string, ModuleHighlight> {
   const now = Date.now();
   const result = new Map<string, ModuleHighlight>();
   for (const m of modules) {
-    const gitFresh =
-      m.activeUserName && m.activeAt && now - new Date(m.activeAt).getTime() < ACTIVE_CUTOFF_MS
-        ? m.activeUserName
-        : null;
+    let list: { name: string; at: string }[] = [];
+    try {
+      list = m.activeUsers ? (JSON.parse(m.activeUsers) as { name: string; at: string }[]) : [];
+    } catch {
+      list = [];
+    }
+    const fresh = [
+      ...new Set(
+        list
+          .filter((e) => e && e.at && now - new Date(e.at).getTime() < ACTIVE_CUTOFF_MS)
+          .map((e) => e.name),
+      ),
+    ];
 
-    if (gitFresh) {
+    if (fresh.length) {
       result.set(m.key, {
         active: true,
-        color: colorMap.get(gitFresh) || ACTIVE_FALLBACK,
-        activeBy: gitFresh,
+        color: colorMap.get(fresh[0]) || ACTIVE_FALLBACK,
+        activeUsers: fresh,
+        conflict: fresh.length >= 2,
+        activeBy: fresh[0],
         kind: "git",
       });
       continue;
@@ -75,12 +88,14 @@ export function computeHighlights(
 
     const doing = features.filter((f) => f.status === "doing" && f.moduleKey === m.key);
     if (doing.length === 0) {
-      result.set(m.key, { active: false, color: NEUTRAL, activeBy: null, kind: null });
+      result.set(m.key, { active: false, color: NEUTRAL, activeUsers: [], conflict: false, activeBy: null, kind: null });
     } else {
       const owner = doing.map((f) => f.ownerName).find(Boolean) ?? m.ownerName ?? null;
       result.set(m.key, {
         active: true,
         color: (owner && colorMap.get(owner)) || ACTIVE_FALLBACK,
+        activeUsers: owner ? [owner] : [],
+        conflict: false,
         activeBy: owner,
         kind: "doing",
       });

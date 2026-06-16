@@ -11,6 +11,8 @@ export type DrawerData = {
   boundary: string;
   ownerName: string | null;
   color: string;
+  activeUsers: string[];
+  conflict: boolean;
   features: DrawerItem[];
   decisions: DrawerItem[];
 };
@@ -57,6 +59,24 @@ export function ModuleDrawer({
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto p-4 text-sm">
+          {data.activeUsers.length > 0 && (
+            <section className={data.conflict ? "rounded-md bg-red-50 p-2" : ""}>
+              <h3 className="mb-1 font-semibold text-slate-700">
+                {data.conflict ? "⚠ 多人在改(注意撞车)" : "正在改"}
+              </h3>
+              <div className="flex flex-wrap gap-1.5">
+                {data.activeUsers.map((name) => {
+                  const color = members.find((m) => m.name === name)?.color ?? "#94a3b8";
+                  return (
+                    <span key={name} className="flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                      {name}
+                    </span>
+                  );
+                })}
+              </div>
+            </section>
+          )}
           {data.boundary && (
             <section>
               <h3 className="mb-1 font-semibold text-slate-700">边界</h3>

@@ -38,8 +38,7 @@ model Module {
   doc       String   @default("") // 完整文档(markdown),展示在模块单页
   functions String   @default("[]") // 函数级条目 JSON: [{name, note}]
   paths     String   @default("[]") // 该模块对应的代码路径 glob(JSON)
-  activeUserName String?   // 最近在改这个模块的人(sync 时按 git 改动派生)
-  activeAt       DateTime? // 最近改动时间(用于过期淡出)
+  activeUsers String @default("[]") // 正在改这个模块的人:JSON [{name, at(ISO)}];sync 按 git 改动增量维护,支持多人
   posX      Float    @default(0)
   posY      Float    @default(0)
   edgesOut  ModuleEdge[] @relation("edgeFrom")

@@ -23,14 +23,23 @@ export async function DELETE(req: NextRequest) {
     where: { projectId: user.projectId, ownerName: user.name },
     data: { ownerName: null },
   });
-  await prisma.module.updateMany({
-    where: { projectId: user.projectId, activeUserName: user.name },
-    data: { activeUserName: null, activeAt: null },
-  });
   await prisma.feature.updateMany({
     where: { projectId: user.projectId, ownerName: user.name },
     data: { ownerName: null },
   });
+  // 从各模块的 activeUsers(JSON)里摘掉被删的人
+  const mods = await prisma.module.findMany({ where: { projectId: user.projectId } });
+  for (const m of mods) {
+    try {
+      const list = JSON.parse(m.activeUsers) as { name: string; at: string }[];
+      const next = list.filter((e) => e && e.name !== user.name);
+      if (next.length !== list.length) {
+        await prisma.module.update({ where: { id: m.id }, data: { activeUsers: JSON.stringify(next) } });
+      }
+    } catch {
+      /* ignore */
+    }
+  }
 
   return NextResponse.json({ ok: true });
 }
