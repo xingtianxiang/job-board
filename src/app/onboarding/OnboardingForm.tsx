@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { PALETTE, readableText } from "@/lib/colors";
 import { loginAs, createIdentity } from "./actions";
 
@@ -12,6 +13,17 @@ export function OnboardingForm({
 }) {
   const [adding, setAdding] = useState(members.length === 0);
   const [color, setColor] = useState(PALETTE[0].hex);
+  const router = useRouter();
+
+  async function deleteMember(id: string, name: string) {
+    if (!confirm(`删除成员「${name}」?(只删身份,不影响 BOARD.md)`)) return;
+    await fetch("/api/user", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ userId: id }),
+    });
+    router.refresh();
+  }
 
   return (
     <div className="space-y-5">
@@ -20,16 +32,26 @@ export function OnboardingForm({
           <label className="mb-2 block text-sm font-medium text-slate-700">选你的名字</label>
           <div className="flex flex-wrap gap-2">
             {members.map((m) => (
-              <form key={m.id} action={loginAs}>
-                <input type="hidden" name="userId" value={m.id} />
+              <div
+                key={m.id}
+                className="flex items-center rounded-full shadow-sm"
+                style={{ background: m.color, color: readableText(m.color) }}
+              >
+                <form action={loginAs}>
+                  <input type="hidden" name="userId" value={m.id} />
+                  <button type="submit" className="py-2 pl-4 pr-2 text-sm font-semibold hover:opacity-90">
+                    {m.name}
+                  </button>
+                </form>
                 <button
-                  type="submit"
-                  style={{ background: m.color, color: readableText(m.color) }}
-                  className="rounded-full px-4 py-2 text-sm font-semibold shadow-sm hover:opacity-90"
+                  type="button"
+                  onClick={() => deleteMember(m.id, m.name)}
+                  title="删除成员"
+                  className="mr-1.5 rounded-full px-1.5 text-base leading-none opacity-60 hover:opacity-100"
                 >
-                  {m.name}
+                  ×
                 </button>
-              </form>
+              </div>
             ))}
           </div>
         </div>
