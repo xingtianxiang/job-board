@@ -1,0 +1,99 @@
+# weld-board · 团队看板
+
+一个给小团队对齐「**模块边界 · 统一技术方案 · 谁在做什么 · 产品功能**」的轻量看板。
+中间一张可交互的**模块地图**(节点颜色 = 负责人高亮),点节点弹抽屉,再点进**模块单页**可看完整文档 / 函数级。
+
+数据只有一条来源:本地 `BOARD.md`(可用本地 AI 起草)→ `npm run sync` 上传。**网站后端不调用 AI。**
+
+技术栈:Next.js 14(App Router)+ TypeScript + Prisma + React Flow + Tailwind。
+
+---
+
+## 1. 本地开发(SQLite,零配置)
+
+```bash
+cd weld-board
+npm install
+npm run db:push          # 按 schema 建本地 SQLite 表(prisma/dev.db)
+npm run dev              # http://localhost:3000
+```
+
+首次打开会跳到 `/onboarding`:填名字、选高亮色(没数据时还没有模块可勾)。
+
+### 载入示例数据 / 上传你的看板
+
+网站起着的时候,在**另一个终端**:
+
+```bash
+cd weld-board
+npm run sync -- BOARD.sample.md          # 先用自带示例感受一下
+# 或上传你真实项目的 BOARD.md:
+npm run sync -- ../weld_KAIERDA/BOARD.md
+```
+
+刷新页面就能看到模块地图。再回 `/onboarding` 勾选「我负责的模块」,它们会高亮成你的色。
+
+> `npm run sync` 自动从 `weld-board/.env` 读取 `BOARD_INGEST_TOKEN`,并附带本地 git 信息(分支 / commit / git user)。
+
+---
+
+## 2. BOARD.md 怎么写
+
+见 [`BOARD.sample.md`](./BOARD.sample.md)。要点:
+
+- 文件顶部一对 `---` 之间是 **YAML 结构化数据**(网站读这部分);下面正文随便写。
+- 维护流程:**本地用 AI 扫 docs 起草 YAML → `npm run sync` 上传**。改完重跑 sync 即可。
+- 重跑 sync 是安全的:按 `key`/`title` 合并,**不会冲掉**你在网站上拖好的节点位置、也不会冲掉 UI 里认领的负责人(除非 BOARD.md 显式写了 `owner`)。
+
+---
+
+## 3. 部署到 Vercel + Neon(公网网址,免运维)
+
+### 3.1 数据库换成 Neon Postgres
+
+1. 在 [neon.tech](https://neon.tech) 建一个免费库,拿到连接串。
+2. 把 `prisma/schema.prisma` 里的 datasource provider 从 `sqlite` 改成 `postgresql`:
+   ```prisma
+   datasource db {
+     provider = "postgresql"
+     url      = env("DATABASE_URL")
+   }
+   ```
+3. `DATABASE_URL` 填 Neon 连接串(形如 `postgresql://...?sslmode=require`)。
+4. 本地执行 `npx prisma migrate dev --name init` 生成迁移(或部署时 `prisma migrate deploy`)。
+
+### 3.2 部署(两选一,都行)
+
+- **A. GitHub + Vercel(推荐,push 即部署)**:把 `weld-board/` 推到一个**独立** GitHub 仓库 → 在 Vercel 导入 → 配置环境变量。
+- **B. 本地直接上线(不碰 git)**:`npm i -g vercel` → `vercel --prod`。
+
+### 3.3 Vercel 环境变量
+
+| 变量 | 说明 |
+|---|---|
+| `DATABASE_URL` | Neon 连接串 |
+| `BOARD_INGEST_TOKEN` | 上传令牌(本地 `.env` 里要填同一个值) |
+| `TEAM_PASSCODE` | 可选,整站口令;留空则不启用 |
+
+> 部署后把 `BOARD_URL` 指向线上地址再 sync:
+> `BOARD_URL=https://你的域名 npm run sync -- ../weld_KAIERDA/BOARD.md`
+> (PowerShell:`$env:BOARD_URL="https://你的域名"; npm run sync -- ...`)
+
+**无需** `ANTHROPIC_API_KEY` —— 后端不调用 AI。
+
+---
+
+## 4. 目录结构
+
+```
+src/app/            页面与 API(看板首页 / onboarding / 模块单页 / ingest / presence)
+src/components/     ModuleMap(地图)· ModuleDrawer(抽屉)· PresenceBar · FeatureBoard · DecisionPanel
+src/lib/            board-parse(BOARD.md 解析)· ingest(落库)· data(查询)· auth · db · colors
+tools/board-sync/   本地上传脚本
+prisma/schema.prisma 数据模型(单一真源)
+BOARD.sample.md     示例看板源文件
+```
+
+## 5. 身份说明
+
+当前为「**选名字 + 高亮色**」的轻量身份(cookie 记住)。`User.githubLogin` 字段与 `src/lib/auth.ts` 已为以后接 GitHub OAuth(Auth.js)预留,不必重构。

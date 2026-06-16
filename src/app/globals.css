@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* 极简 markdown 排版(模块文档 / 决策正文) */
+.prose-wb {
+  @apply text-sm leading-relaxed text-slate-700;
+}
+.prose-wb h1 {
+  @apply mb-2 mt-3 text-lg font-bold text-slate-900;
+}
+.prose-wb h2 {
+  @apply mb-1.5 mt-3 text-base font-semibold text-slate-900;
+}
+.prose-wb h3 {
+  @apply mb-1 mt-2 text-sm font-semibold text-slate-800;
+}
+.prose-wb p {
+  @apply my-1.5;
+}
+.prose-wb ul {
+  @apply my-1.5 list-disc pl-5;
+}
+.prose-wb ol {
+  @apply my-1.5 list-decimal pl-5;
+}
+.prose-wb code {
+  @apply rounded bg-slate-100 px-1 py-0.5 font-mono text-[12px] text-slate-800;
+}
+.prose-wb pre {
+  @apply my-2 overflow-x-auto rounded-md bg-slate-900 p-3 text-[12px] text-slate-100;
+}
+.prose-wb pre code {
+  @apply bg-transparent p-0 text-slate-100;
+}
+.prose-wb a {
+  @apply text-blue-600 underline;
+}
+.prose-wb table {
+  @apply my-2 w-full border-collapse text-sm;
+}
+.prose-wb th,
+.prose-wb td {
+  @apply border border-slate-200 px-2 py-1 text-left;
+}
+.prose-wb blockquote {
+  @apply my-2 border-l-4 border-slate-200 pl-3 text-slate-500;
+}
