@@ -4,14 +4,14 @@
 目的是大家(尤其是用 AI 编程时)不越界、不撞车、技术路线一致。
 
 > **看之前先填两处**(项目负责人填好再发,或单独告诉你):
-> - 网站地址:`【网址】`(例如 https://job-board-xxx.vercel.app)
-> - 上传令牌:`【上传令牌】`(只有需要本地更新看板的人才用到,见第三部分)
+> - 网站地址:`https://job-board-phi-sage.vercel.app`(例如 https://job-board-xxx.vercel.app)
+> - 上传令牌:`找负责人私下要`(只有需要本地更新看板的人才用到,见第三部分)
 
 ---
 
 ## 一、登录(1 分钟)
 
-1. 打开 **`【网址】`**。
+1. 打开 **`https://job-board-phi-sage.vercel.app`**。
 2. 第一次会进到"选名字"页:
    - 名单里**有你的名字** → 直接点它进入。
    - **没有** → 点 **"+ 新增成员"** → 输入名字、选一个高亮色 → "创建并进入"。
@@ -67,14 +67,14 @@
    ```
 3. 在 `job-board` 目录建一个 `.env` 文件,写一行(令牌找项目负责人要):
    ```
-   BOARD_INGEST_TOKEN=【上传令牌】
+   BOARD_INGEST_TOKEN=找负责人私下要
    ```
 
 **日常更新(在 job-board 目录里跑):**
 - 你只要**正常写代码**。想把"我在改哪块"推上看板时:
   - PowerShell:
     ```powershell
-    $env:BOARD_URL="【网址】"
+    $env:BOARD_URL="https://job-board-phi-sage.vercel.app"
     npm run sync -- 你的项目路径\BOARD.md
     ```
   - 例如项目和 job-board 同级时:`npm run sync -- ..\weld_KAIERDA\BOARD.md`
