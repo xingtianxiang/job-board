@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getBoard, getPrimaryProject, buildColorMap, colorFor, computeHighlights } from "@/lib/data";
+import { getBoard, getPrimaryProject, buildColorMap, colorFor, computeHighlights, getRecentCommits } from "@/lib/data";
 import { NEUTRAL } from "@/lib/colors";
+import { relativeTime } from "@/lib/time";
 import { Markdown } from "@/components/Markdown";
 import { BoardClient } from "@/components/BoardClient";
 import { ActivityBar, type ActivityItem } from "@/components/ActivityBar";
@@ -21,6 +22,7 @@ export default async function HomePage() {
   if (!project) return <EmptyState />;
 
   const { modules, edges, users, features, decisions } = await getBoard(project.id);
+  const commits = await getRecentCommits(project.id, 30); // 历史车道:最近提交流(与实时高亮无关)
   const colorMap = buildColorMap(users);
   const colorOf: Record<string, string> = Object.fromEntries(users.map((u) => [u.name, u.color]));
   const highlights = computeHighlights(modules, features, colorMap);
@@ -166,6 +168,22 @@ export default async function HomePage() {
                 body: d.body,
               }))}
             />
+          </section>
+          <section>
+            <h2 className="mb-2 text-sm font-semibold text-slate-700">提交历史(最近)</h2>
+            {commits.length === 0 ? (
+              <p className="text-xs text-slate-400">还没有提交历史。配好 GitHub Action 后,push 即自动入库。</p>
+            ) : (
+              <ul className="space-y-1.5 text-xs">
+                {commits.map((c) => (
+                  <li key={c.id} className="flex items-baseline gap-2">
+                    <code className="shrink-0 rounded bg-slate-100 px-1 text-[11px] text-slate-500">{c.shortSha}</code>
+                    <span className="min-w-0 flex-1 truncate text-slate-700">{c.message}</span>
+                    <span className="shrink-0 text-[11px] text-slate-400">{relativeTime(c.committedAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         </aside>
       </div>

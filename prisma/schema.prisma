@@ -23,6 +23,7 @@ model Project {
   users        User[]
   features     Feature[]
   decisions    Decision[]
+  commits      Commit[]
 }
 
 // 模块 = 脊梁。人/功能/决策都按 moduleKey 挂到它上面。
@@ -109,4 +110,41 @@ model Decision {
   decidedAt DateTime?
 
   @@unique([projectId, title])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// 历史车道(additive history lane)—— 与"✎ 实时在改"信号四不沾:
+// 独立的表、独立的 endpoint(/api/github-ingest)、独立的 handler、独立的 token。
+// 数据由 GitHub Action(push 时)推入,绝不触碰 Module.activeUsers。
+// ───────────────────────────────────────────────────────────────────────────
+
+// 一条 git 提交。按 (projectId, sha) 幂等;重推自愈。
+model Commit {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sha         String // 全 40 位,幂等键
+  shortSha    String       @default("")
+  branch      String       @default("")
+  message     String       @default("") // 只存首行
+  authorName  String       @default("")
+  authorEmail String       @default("")
+  authorLogin String? // 对应 User.githubLogin,用来上色
+  committedAt DateTime // 时间维度
+  moduleKeys  String       @default("[]") // 命中的模块 key,JSON 存 String(随大流)
+  files       CommitFile[]
+  createdAt   DateTime     @default(now())
+
+  @@unique([projectId, sha])
+  @@index([projectId, committedAt])
+}
+
+// 一条提交里改动的单个文件路径(正斜杠归一)。重推时 delete+recreate。
+model CommitFile {
+  id       String @id @default(cuid())
+  commitId String
+  commit   Commit @relation(fields: [commitId], references: [id], onDelete: Cascade)
+  path     String
+
+  @@index([commitId])
 }

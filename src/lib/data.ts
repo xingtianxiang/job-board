@@ -19,6 +19,15 @@ export async function getBoard(projectId: string) {
   return { project, modules, edges, users, features, decisions };
 }
 
+/** 最近提交流(历史车道)。按 committedAt 倒序。与实时高亮无关,只读 Commit 表。 */
+export async function getRecentCommits(projectId: string, limit = 30) {
+  return prisma.commit.findMany({
+    where: { projectId },
+    orderBy: { committedAt: "desc" },
+    take: limit,
+  });
+}
+
 /** 已归档的功能(给 /archive 页面)。 */
 export async function getArchivedFeatures(projectId: string) {
   return prisma.feature.findMany({
