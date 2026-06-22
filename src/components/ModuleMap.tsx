@@ -21,7 +21,7 @@ export type MapModule = {
   active: boolean;
   activeKind: "git" | "doing" | null;
   activeBy: string | null;
-  activeUsers: string[];
+  activeUsers: { name: string; ago: string }[];
   conflict: boolean;
   posX: number;
   posY: number;
@@ -35,7 +35,7 @@ type NodeData = {
   active: boolean;
   activeKind: "git" | "doing" | null;
   activeBy: string | null;
-  activeUsers: string[];
+  activeUsers: { name: string; ago: string }[];
   conflict: boolean;
   mkey: string;
 };
@@ -46,10 +46,11 @@ function ModuleNode({ data }: { data: NodeData }) {
   const bg = active ? data.color : "#ffffff";
   const fg = active ? readableText(data.color) : "#171717";
   const ring = conflict ? "0 0 0 3px #ea001d" : active ? `0 0 0 3px ${data.color}55` : undefined;
+  const ago = data.activeUsers[0]?.ago;
   const badge = conflict
     ? `⚠ ${data.activeUsers.length} 人在改`
     : data.activeKind === "git"
-      ? `✎ ${data.activeBy ?? ""} 在改`
+      ? `✎ ${data.activeBy ?? ""} 在改${ago ? ` · ${ago}` : ""}`
       : data.activeKind === "doing"
         ? "▶ 进行中"
         : null;

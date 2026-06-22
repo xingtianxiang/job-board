@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "令牌不正确" }, { status: 401 });
   }
 
-  let body: { boardMarkdown?: string; git?: { user?: string; changedFiles?: string[] } };
+  let body: { boardMarkdown?: string; git?: { user?: string; email?: string; changedFiles?: string[] } };
   try {
     body = await req.json();
   } catch {

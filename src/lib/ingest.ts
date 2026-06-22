@@ -9,7 +9,7 @@ function gridPos(i: number) {
   return { posX: (i % 4) * 230 + 40, posY: Math.floor(i / 4) * 150 + 40 };
 }
 
-export type GitInfo = { user?: string; changedFiles?: string[] };
+export type GitInfo = { user?: string; email?: string; changedFiles?: string[] };
 
 export async function applyBoardMarkdown(raw: string, git?: GitInfo) {
   const board = parseBoardMarkdown(raw);
@@ -108,12 +108,42 @@ export async function applyBoardMarkdown(raw: string, git?: GitInfo) {
 
   // 6) 按 git 改动自动高亮:在命中模块的 activeUsers 里【增量加上自己】;自己已不在改的模块只摘掉自己的条目
   //    (别人的条目不动)→ 支持一个模块多人在改、多分支多人互不覆盖。
+  //    身份解析:git.email 优先、git.user 兜底(均规范化)→ 认到看板成员,存其【画布名】,
+  //    这样颜色/名单永远对得上;匹配上且成员还没存 email 时自动学习,以后即便改名也认得出。
   let gitActive = 0;
   const gitUser = (git?.user ?? "").trim();
+  const gitEmail = (git?.email ?? "").trim().toLowerCase();
   const changed = Array.isArray(git?.changedFiles)
     ? git!.changedFiles.map((f) => String(f).replace(/\\/g, "/"))
     : [];
   if (gitUser && changed.length) {
+    // 解析画布身份。gitEmail 列可能还没 db push,查询失败时降级为只按 name 匹配,绝不阻断同步。
+    const norm = (s: string) => s.trim().toLowerCase();
+    let canonicalName = gitUser;
+    let members: { id: string; name: string; gitEmail: string | null }[] = [];
+    try {
+      members = await prisma.user.findMany({
+        where: { projectId: project.id },
+        select: { id: true, name: true, gitEmail: true },
+      });
+    } catch {
+      const tmp = await prisma.user.findMany({ where: { projectId: project.id }, select: { id: true, name: true } });
+      members = tmp.map((u) => ({ id: u.id, name: u.name, gitEmail: null }));
+    }
+    let matched = gitEmail ? members.find((u) => u.gitEmail && norm(u.gitEmail) === gitEmail) : undefined;
+    if (!matched) matched = members.find((u) => norm(u.name) === norm(gitUser));
+    if (matched) {
+      canonicalName = matched.name;
+      // 学习 email:成员还没绑且这次带了 email → 记下来(列未迁移时静默跳过)
+      if (gitEmail && !matched.gitEmail) {
+        try {
+          await prisma.user.update({ where: { id: matched.id }, data: { gitEmail } });
+        } catch {
+          /* gitEmail 列还没 db push,忽略 */
+        }
+      }
+    }
+
     const mods = await prisma.module.findMany({ where: { projectId: project.id } });
     const nowIso = new Date().toISOString();
     const touched = new Set<string>();
@@ -133,8 +163,9 @@ export async function applyBoardMarkdown(raw: string, git?: GitInfo) {
       } catch {
         list = [];
       }
-      const others = list.filter((e) => e && e.name !== gitUser);
-      const next = touched.has(m.key) ? [...others, { name: gitUser, at: nowIso }] : others;
+      // 摘掉自己的旧条目:画布名 + 原始 git 名都摘(覆盖"改名/首次认领"的过渡,避免留鬼影)
+      const others = list.filter((e) => e && e.name !== canonicalName && e.name !== gitUser);
+      const next = touched.has(m.key) ? [...others, { name: canonicalName, at: nowIso }] : others;
       const nextJson = JSON.stringify(next);
       if (nextJson !== m.activeUsers) {
         await prisma.module.update({ where: { id: m.id }, data: { activeUsers: nextJson } });

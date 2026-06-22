@@ -40,7 +40,7 @@ export default async function HomePage() {
       active: h?.active ?? false,
       activeKind: h?.kind ?? null,
       activeBy: h?.activeBy ?? null,
-      activeUsers: h?.activeUsers ?? [],
+      activeUsers: (h?.activeUsers ?? []).map((u) => ({ name: u.name, ago: u.at ? relativeTime(u.at) : "" })),
       conflict: h?.conflict ?? false,
       posX: m.posX,
       posY: m.posY,
@@ -58,7 +58,7 @@ export default async function HomePage() {
         boundary: m.boundary,
         ownerName: m.ownerName,
         color: highlights.get(m.key)?.color ?? colorFor(m.ownerName, colorMap),
-        activeUsers: highlights.get(m.key)?.activeUsers ?? [],
+        activeUsers: (highlights.get(m.key)?.activeUsers ?? []).map((u) => ({ name: u.name, ago: u.at ? relativeTime(u.at) : "" })),
         conflict: highlights.get(m.key)?.conflict ?? false,
         features: features
           .filter((f) => f.moduleKey === m.key)
@@ -75,12 +75,13 @@ export default async function HomePage() {
     .filter((m) => highlights.get(m.key)?.kind === "git")
     .flatMap((m) => {
       const h = highlights.get(m.key)!;
-      return h.activeUsers.map((name) => ({
+      return h.activeUsers.map((u) => ({
         title: h.conflict ? "⚠ 在改" : "在改",
         moduleKey: m.key,
         moduleTitle: m.title,
-        ownerName: name,
-        color: colorOf[name] ?? NEUTRAL,
+        ownerName: u.name,
+        color: colorOf[u.name] ?? NEUTRAL,
+        ago: u.at ? relativeTime(u.at) : undefined,
       }));
     });
   const doingActivity: ActivityItem[] = features

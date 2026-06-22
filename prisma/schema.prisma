@@ -67,6 +67,7 @@ model User {
   project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name        String
   color       String // 高亮色 hex
+  gitEmail    String? // git config user.email:把 sync 的 git 身份稳定地认到成员(比 name 稳);sync 时自动学习,匹配优先于 name
   githubLogin String? // 预留,以后接 OAuth
   presence    Presence?
 
