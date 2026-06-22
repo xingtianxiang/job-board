@@ -66,7 +66,7 @@ export function ModuleDrawer({
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {data.activeUsers.map((name) => {
-                  const color = members.find((m) => m.name === name)?.color ?? "#94a3b8";
+                  const color = members.find((m) => m.name === name)?.color ?? "#a8a8a8";
                   return (
                     <span key={name} className="flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-xs">
                       <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
@@ -134,6 +134,6 @@ export function ModuleDrawer({
 }
 
 function StatusDot({ status }: { status: string }) {
-  const color = status === "done" ? "#16a34a" : status === "doing" ? "#ea580c" : "#94a3b8";
+  const color = status === "done" ? "#28a948" : status === "doing" ? "#ff9300" : "#a8a8a8";
   return <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />;
 }

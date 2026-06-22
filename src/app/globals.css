@@ -12,7 +12,13 @@ body {
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-slate-50 text-slate-900 antialiased font-sans;
+}
+
+/* Geist 焦点态:2px 表面间隙 + 2px blue-700 环(无障碍可见焦点) */
+:where(a, button, select, input, textarea, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #006bff;
 }
 
 /* 极简 markdown 排版(模块文档 / 决策正文) */

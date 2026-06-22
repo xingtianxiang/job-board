@@ -44,8 +44,8 @@ function ModuleNode({ data }: { data: NodeData }) {
   const active = data.active;
   const conflict = data.conflict;
   const bg = active ? data.color : "#ffffff";
-  const fg = active ? readableText(data.color) : "#0f172a";
-  const ring = conflict ? "0 0 0 3px #dc2626" : active ? `0 0 0 3px ${data.color}55` : undefined;
+  const fg = active ? readableText(data.color) : "#171717";
+  const ring = conflict ? "0 0 0 3px #ea001d" : active ? `0 0 0 3px ${data.color}55` : undefined;
   const badge = conflict
     ? `⚠ ${data.activeUsers.length} 人在改`
     : data.activeKind === "git"
@@ -121,8 +121,8 @@ export function ModuleMap({
         label: e.kind === "boundary" ? "边界" : undefined,
         style:
           e.kind === "boundary"
-            ? { stroke: "#dc2626", strokeDasharray: "4 4" }
-            : { stroke: "#94a3b8" },
+            ? { stroke: "#ea001d", strokeDasharray: "4 4" }
+            : { stroke: "#c9c9c9" },
       })),
     [edges],
   );

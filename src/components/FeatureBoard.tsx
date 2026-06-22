@@ -80,7 +80,7 @@ export function FeatureBoard({
                       <span className="flex items-center gap-1 text-[11px] text-slate-500">
                         <span
                           className="inline-block h-2.5 w-2.5 rounded-full"
-                          style={{ background: who ? colorOf[who] ?? NEUTRAL : "#e2e8f0" }}
+                          style={{ background: who ? colorOf[who] ?? NEUTRAL : "#e6e6e6" }}
                         />
                         {who ?? "未指派"}
                       </span>
