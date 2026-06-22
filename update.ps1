@@ -10,3 +10,4 @@ Set-Location $here
 if (-not $Board) { $Board = Join-Path (Split-Path $here -Parent) "weld_KAIERDA\BOARD.md" }
 $env:BOARD_URL = "https://job-board-phi-sage.vercel.app"
 npm run sync -- "$Board"
+npm run sync:history -- "$Board"   # 历史车道:顺手把最近提交推上去(独立 endpoint/token,与实时高亮四不沾)
