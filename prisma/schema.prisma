@@ -24,6 +24,7 @@ model Project {
   features     Feature[]
   decisions    Decision[]
   commits      Commit[]
+  activeBranches ActiveBranch[]
 }
 
 // 模块 = 脊梁。人/功能/决策都按 moduleKey 挂到它上面。
@@ -148,4 +149,26 @@ model CommitFile {
   path     String
 
   @@index([commitId])
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// 活跃分支雷达 —— 驱动"提交/分支在改"点灯(①提交衰减 + ②分支/合并真相)。
+// 与 Module.activeUsers(旧 diff 信号)、Commit(历史车道)【三不沾】:独立表、
+// 独立端点(/api/branch-activity)、由 GitHub Action 喂数(push/PR-merged/delete)。
+// 一条"领先 main、最近还在动"的分支 = 一行;PR 合并 / 远端删除 → 删行(立刻灭);
+// lastActivityAt 超过窗口未动 → 读取端不再点亮(漏事件兜底)。
+// ───────────────────────────────────────────────────────────────────────────
+model ActiveBranch {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name           String // 分支名(如 feat/merge-robot-executor)
+  authorName     String   @default("")
+  authorEmail    String   @default("") // 按 email 认看板成员(与既有逻辑一致)→ 取其画布色
+  moduleKeys     String   @default("[]") // 该分支当前碰到的模块 key(JSON);由"领先 main 的文件"经 fileMatchesPaths 算出
+  lastActivityAt DateTime // 该分支最新提交时间 → ① 衰减 / 僵尸分支兜底
+  updatedAt      DateTime @updatedAt
+
+  @@unique([projectId, name])
+  @@index([projectId, lastActivityAt])
 }

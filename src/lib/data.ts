@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/db";
 import { NEUTRAL, ACTIVE_FALLBACK } from "@/lib/colors";
 
+// 分支"在改"的新鲜窗口:超过这个时长没动的分支视为僵尸,读取端不再点亮、查询也据此剪枝。
+// 灭灯主要靠 GitHub Action 在 PR 合并/分支删除时删行(立刻);本窗口只兜"漏事件的僵尸分支"。
+const BRANCH_STALE_MS = 7 * 24 * 60 * 60 * 1000; // 7 天
+
 /** 主项目:MVP 单项目,取第一个。无项目(还没 sync 过)返回 null。 */
 export async function getPrimaryProject() {
   return prisma.project.findFirst({ orderBy: { slug: "asc" } });
@@ -25,6 +29,15 @@ export async function getRecentCommits(projectId: string, limit = 30) {
     where: { projectId },
     orderBy: { committedAt: "desc" },
     take: limit,
+  });
+}
+
+/** 活跃分支雷达(驱动新版"在改"点灯①②)。只读 ActiveBranch 表,与历史车道/旧 diff 信号互不相干。 */
+export async function getActiveBranches(projectId: string) {
+  // 只拉新鲜窗口内的分支:吃上 @@index([projectId, lastActivityAt]),也避免僵尸行无限堆积拖慢首页。
+  return prisma.activeBranch.findMany({
+    where: { projectId, lastActivityAt: { gte: new Date(Date.now() - BRANCH_STALE_MS) } },
+    orderBy: { lastActivityAt: "desc" },
   });
 }
 
@@ -105,6 +118,93 @@ export function computeHighlights(
       continue;
     }
 
+    const doing = features.filter((f) => f.status === "doing" && f.moduleKey === m.key);
+    if (doing.length === 0) {
+      result.set(m.key, { active: false, color: NEUTRAL, activeUsers: [], conflict: false, activeBy: null, kind: null });
+    } else {
+      const owner = doing.map((f) => f.ownerName).find(Boolean) ?? m.ownerName ?? null;
+      result.set(m.key, {
+        active: true,
+        color: (owner && colorMap.get(owner)) || ACTIVE_FALLBACK,
+        activeUsers: owner ? [{ name: owner, at: "" }] : [],
+        conflict: false,
+        activeBy: owner,
+        kind: "doing",
+      });
+    }
+  }
+  return result;
+}
+
+// 新版"在改"点灯(① 提交衰减 + ② 分支/合并真相):从活跃分支雷达算,不读 Module.activeUsers。
+//  1) 某模块被【最近 W 内还在动、且领先 main】的分支碰到 → 点亮该分支作者;≥2 个不同作者 = 撞车。优先级最高。
+//  2) 否则若有 doing 的 feature → 取负责人色(与 computeHighlights 一致)。
+//  3) 否则中性灰。
+// 灭灯靠 GitHub Action 在 PR 合并/分支删除时删行(立刻);BRANCH_STALE_MS(见顶部)只兜"漏事件的僵尸分支"。
+export function computeBranchHighlights(
+  modules: { key: string; ownerName: string | null }[],
+  features: { moduleKey: string | null; status: string; ownerName: string | null }[],
+  activeBranches: { name: string; authorName: string; authorEmail: string; moduleKeys: string; lastActivityAt: Date }[],
+  users: { name: string; gitEmail: string | null }[],
+  colorMap: Map<string, string>,
+): Map<string, ModuleHighlight> {
+  const now = Date.now();
+  // 认人口径与 ingest.ts 第6步严格一致:先按 git email 精确认成员,失败再按规范化画布名兜底,
+  // 都认不到才退到原始 git 名。两级都收敛到【画布名】→ 颜色对得上,且同一个人(不同 email/身份)
+  // 不会被算成两人(避免假撞车);旧 diff 信号正是这套两级匹配。
+  const norm = (s: string) => (s || "").trim().toLowerCase();
+  const emailToName = new Map<string, string>();
+  const nameToCanonical = new Map<string, string>();
+  for (const u of users) {
+    if (u.gitEmail) emailToName.set(norm(u.gitEmail), u.name);
+    nameToCanonical.set(norm(u.name), u.name);
+  }
+  const resolveName = (b: { authorEmail: string; authorName: string }) =>
+    emailToName.get(norm(b.authorEmail)) ||
+    nameToCanonical.get(norm(b.authorName)) ||
+    b.authorName ||
+    b.authorEmail ||
+    "未知";
+
+  // 模块 key →(作者名 → 最近活动 ms)。只算新鲜(W 内)的分支。
+  const perModule = new Map<string, Map<string, number>>();
+  for (const b of activeBranches) {
+    const ts = b.lastActivityAt instanceof Date ? b.lastActivityAt.getTime() : new Date(b.lastActivityAt).getTime();
+    if (isNaN(ts) || now - ts >= BRANCH_STALE_MS) continue;
+    let keys: string[] = [];
+    try {
+      keys = JSON.parse(b.moduleKeys) as string[];
+    } catch {
+      keys = [];
+    }
+    if (!keys.length) continue;
+    const name = resolveName(b);
+    for (const k of keys) {
+      let perAuthor = perModule.get(k);
+      if (!perAuthor) perModule.set(k, (perAuthor = new Map()));
+      const prev = perAuthor.get(name);
+      if (prev === undefined || ts > prev) perAuthor.set(name, ts);
+    }
+  }
+
+  const result = new Map<string, ModuleHighlight>();
+  for (const m of modules) {
+    const contrib = perModule.get(m.key);
+    if (contrib && contrib.size) {
+      const fresh: ActiveUser[] = [...contrib.entries()]
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, ts]) => ({ name, at: new Date(ts).toISOString() }));
+      result.set(m.key, {
+        active: true,
+        color: colorMap.get(fresh[0].name) || ACTIVE_FALLBACK,
+        activeUsers: fresh,
+        conflict: fresh.length >= 2,
+        activeBy: fresh[0].name,
+        kind: "git",
+      });
+      continue;
+    }
+    // doing fallback —— 与 computeHighlights 同款,保持行为一致
     const doing = features.filter((f) => f.status === "doing" && f.moduleKey === m.key);
     if (doing.length === 0) {
       result.set(m.key, { active: false, color: NEUTRAL, activeUsers: [], conflict: false, activeBy: null, kind: null });

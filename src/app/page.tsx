@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
-import { getBoard, getPrimaryProject, buildColorMap, colorFor, computeHighlights, getRecentCommits } from "@/lib/data";
+import { getBoard, getPrimaryProject, buildColorMap, colorFor, computeHighlights, computeBranchHighlights, getActiveBranches, getRecentCommits } from "@/lib/data";
 import { NEUTRAL } from "@/lib/colors";
 import { relativeTime } from "@/lib/time";
 import { Markdown } from "@/components/Markdown";
@@ -26,7 +26,12 @@ export default async function HomePage() {
   const commits = await getRecentCommits(project.id, 30); // 历史车道:最近提交流(与实时高亮无关)
   const colorMap = buildColorMap(users);
   const colorOf: Record<string, string> = Object.fromEntries(users.map((u) => [u.name, u.color]));
-  const highlights = computeHighlights(modules, features, colorMap);
+  // 灰度开关:USE_BRANCH_SIGNAL=1 → 新版"分支/合并真相"点灯(①②);否则走旧的 diff 信号。
+  // 先关着上线,等 GitHub Action 把 ActiveBranch 喂起来、肉眼对比准了,再翻开关切换。
+  const branchSignal = process.env.USE_BRANCH_SIGNAL === "1";
+  const highlights = branchSignal
+    ? computeBranchHighlights(modules, features, await getActiveBranches(project.id), users, colorMap)
+    : computeHighlights(modules, features, colorMap);
   const moduleTitleByKey: Record<string, string> = Object.fromEntries(modules.map((m) => [m.key, m.title]));
   const moduleOwnerByKey: Record<string, string | null> = Object.fromEntries(modules.map((m) => [m.key, m.ownerName]));
 
@@ -44,7 +49,8 @@ export default async function HomePage() {
       activeUsers: (h?.activeUsers ?? []).map((u) => ({
         name: u.name,
         ago: u.at ? relativeTime(u.at) : "",
-        color: colorOf[u.name] ?? NEUTRAL,
+        // 认到成员用其画布色;认不到的作者回退到模块当前高亮色(而非中性灰),免得边框灰/底色橙不一致
+        color: colorOf[u.name] ?? h?.color ?? NEUTRAL,
       })),
       conflict: h?.conflict ?? false,
       posX: m.posX,
@@ -123,7 +129,8 @@ export default async function HomePage() {
             <span className="inline-block h-3 w-3 rounded-full" style={{ background: user.color }} />
             {user.name}
           </span>
-          <ClockOffButton active={iAmActive} />
+          {/* 收工只清旧 diff 信号(Module.activeUsers);分支信号模式下灭灯归 Action,手动收工无意义 → 不渲染 */}
+          {!branchSignal && <ClockOffButton active={iAmActive} />}
           <Link href="/onboarding" className="text-xs text-slate-400 hover:text-slate-700">
             切换
           </Link>
