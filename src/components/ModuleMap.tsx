@@ -6,11 +6,11 @@ import {
   Controls,
   Handle,
   Position,
+  MarkerType,
   type Node,
   type Edge,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { readableText } from "@/lib/colors";
 
 export type MapModule = {
   id: string;
@@ -21,7 +21,7 @@ export type MapModule = {
   active: boolean;
   activeKind: "git" | "doing" | null;
   activeBy: string | null;
-  activeUsers: { name: string; ago: string }[];
+  activeUsers: { name: string; ago: string; color: string }[];
   conflict: boolean;
   posX: number;
   posY: number;
@@ -35,7 +35,7 @@ type NodeData = {
   active: boolean;
   activeKind: "git" | "doing" | null;
   activeBy: string | null;
-  activeUsers: { name: string; ago: string }[];
+  activeUsers: { name: string; ago: string; color: string }[];
   conflict: boolean;
   mkey: string;
 };
@@ -43,39 +43,44 @@ type NodeData = {
 function ModuleNode({ data }: { data: NodeData }) {
   const active = data.active;
   const conflict = data.conflict;
-  const bg = active ? data.color : "#ffffff";
-  const fg = active ? readableText(data.color) : "#171717";
-  const ring = conflict ? "0 0 0 3px #ea001d" : active ? `0 0 0 3px ${data.color}55` : undefined;
+  const memberColor = data.activeUsers[0]?.color ?? data.color;
+  const borderColor = conflict ? "#ea001d" : active ? memberColor : "#e6e6e6";
   const ago = data.activeUsers[0]?.ago;
   const badge = conflict
     ? `⚠ ${data.activeUsers.length} 人在改`
     : data.activeKind === "git"
-      ? `✎ ${data.activeBy ?? ""} 在改${ago ? ` · ${ago}` : ""}`
+      ? `${data.activeBy ?? ""} 在改${ago ? ` · ${ago}` : ""}`
       : data.activeKind === "doing"
         ? "▶ 进行中"
         : null;
   return (
     <div
-      style={{ background: bg, color: fg, boxShadow: ring }}
-      className={`min-w-[144px] cursor-pointer rounded-lg border px-3 py-2 text-center ${
-        active ? "border-black/10" : "border-slate-300"
-      }`}
+      style={{ background: "#ffffff", color: "#171717", borderColor, borderWidth: conflict || active ? 3 : 1 }}
+      className="min-w-[144px] cursor-pointer rounded-lg border px-3 py-2 text-center"
     >
-      <Handle type="target" position={Position.Top} className="!bg-slate-400" />
+      <Handle type="target" position={Position.Left} className="!bg-slate-400" />
       <div className="text-sm font-semibold leading-tight">{data.title}</div>
-      <div className="mt-0.5 text-[11px]" style={{ opacity: active ? 0.85 : 0.6 }}>
+      <div className="mt-0.5 text-[11px] text-slate-500">
         负责:{data.ownerName ?? "—"}
       </div>
       {badge && (
-        <div
-          className={`mt-1 inline-block rounded-full px-1.5 text-[10px] font-medium ${
-            conflict ? "bg-red-600 text-white" : "bg-black/15"
-          }`}
-        >
-          {badge}
+        <div className="mt-1 flex items-center justify-center gap-1 text-[10px] font-medium">
+          {data.activeUsers.length > 0 && (
+            <span className="flex -space-x-1">
+              {data.activeUsers.slice(0, conflict ? 2 : 1).map((user) => (
+                <span
+                  key={user.name}
+                  title={user.name}
+                  style={{ background: user.color }}
+                  className="inline-block h-2.5 w-2.5 rounded-full border border-white"
+                />
+              ))}
+            </span>
+          )}
+          <span className={conflict ? "rounded-full bg-red-600 px-1.5 text-white" : "text-slate-600"}>{badge}</span>
         </div>
       )}
-      <Handle type="source" position={Position.Bottom} className="!bg-slate-400" />
+      <Handle type="source" position={Position.Right} className="!bg-slate-400" />
     </div>
   );
 }
@@ -86,10 +91,12 @@ export function ModuleMap({
   modules,
   edges,
   onSelect,
+  showDeps = false,
 }: {
   modules: MapModule[];
   edges: MapEdge[];
   onSelect: (key: string) => void;
+  showDeps?: boolean; // 是否叠加显示代码依赖(depends)边;默认只画工艺流
 }) {
   const nodes: Node[] = useMemo(
     () =>
@@ -112,20 +119,41 @@ export function ModuleMap({
     [modules],
   );
 
+  // 工艺流(flow)= 主角:实线 + 箭头,左→右。
+  // 代码依赖(depends)= 次要叠加层:淡虚线,默认隐藏(showDeps 开才画)。
+  // 边界(boundary)= 红虚线,保留。
   const flowEdges: Edge[] = useMemo(
     () =>
-      edges.map((e) => ({
-        id: e.id,
-        source: e.source,
-        target: e.target,
-        animated: e.kind === "depends",
-        label: e.kind === "boundary" ? "边界" : undefined,
-        style:
-          e.kind === "boundary"
-            ? { stroke: "#ea001d", strokeDasharray: "4 4" }
-            : { stroke: "#c9c9c9" },
-      })),
-    [edges],
+      edges
+        .filter((e) => (e.kind === "depends" ? showDeps : true))
+        .map((e) => {
+          if (e.kind === "flow") {
+            return {
+              id: e.id,
+              source: e.source,
+              target: e.target,
+              markerEnd: { type: MarkerType.ArrowClosed, color: "#7d7d7d", width: 8, height: 8 },
+              style: { stroke: "#7d7d7d", strokeWidth: 2 },
+            };
+          }
+          if (e.kind === "boundary") {
+            return {
+              id: e.id,
+              source: e.source,
+              target: e.target,
+              label: "边界",
+              style: { stroke: "#ea001d", strokeDasharray: "4 4" },
+            };
+          }
+          return {
+            id: e.id,
+            source: e.source,
+            target: e.target,
+            animated: true,
+            style: { stroke: "#cbd5e1", strokeDasharray: "4 4" },
+          };
+        }),
+    [edges, showDeps],
   );
 
   return (

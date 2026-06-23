@@ -45,6 +45,10 @@ const BoardSchema = z.object({
     name: z.string().min(1),
     techStack: z.string().optional().default(""),
   }),
+  // 工艺主链:工件【数据流向】的模块 key 顺序(camera → weld_core → scene_widget)。
+  // 与 dependsOn(代码依赖,方向常相反)是两件事;不在链里的模块 = 共享旁路。
+  // 决定首页/模块页的"上游→下游"排布,不影响落库的其它字段。
+  pipeline: z.array(z.string()).optional().default([]),
   modules: z.array(ModuleSchema).optional().default([]),
   decisions: z.array(DecisionSchema).optional().default([]),
   features: z.array(FeatureSchema).optional().default([]),
@@ -94,6 +98,9 @@ export function parseBoardMarkdown(raw: string): ParsedBoard {
   }
   for (const f of result.data.features) {
     if (f.module && !keys.has(f.module)) warnings.push(`功能 "${f.title}" 挂在不存在的模块 "${f.module}"`);
+  }
+  for (const k of result.data.pipeline) {
+    if (!keys.has(k)) warnings.push(`pipeline 引用了不存在的模块 "${k}"(会被忽略)`);
   }
   if (warnings.length) {
     // 不抛错,留给调用方决定是否打印

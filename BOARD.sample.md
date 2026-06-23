@@ -8,6 +8,11 @@ project:
     - **构建**:CMake(VS 自带),离线依赖
     - **坐标**:所有坐标系必须命名,禁止静默单位换算
 
+# 工艺主链:工件【数据流向】的模块 key 顺序(相机取点云 → 焊接识别/规划 → 场景显示)。
+# 这是"数据怎么流",跟 dependsOn(代码依赖,方向常相反)是两件事;
+# 不在链里的模块(如 transform)= 共享旁路,画在主链下面。
+pipeline: [camera, weld_core, scene_widget]
+
 modules:
   - key: scene_widget
     title: 场景显示 SceneWidget
@@ -102,6 +107,7 @@ features:
 > 然后在 weld-board 目录运行 `npm run sync -- 这个文件的路径` 上传。**网站后端不调用 AI**,只做确定性解析。
 
 ## 字段速查
+- `pipeline`(顶层,可选):工艺主链的模块 key 顺序 = 工件数据流向。决定首页/模块页的"上游→下游"排布:声明后首页按这条链横向排开,不在链里的模块画成共享旁路。与 `dependsOn` 是两件事(数据流向 ≠ 代码依赖,方向常相反)。
 - `modules[].key`:稳定键。改名会被当成新模块(原来的位置 / 认领会丢)。
 - `modules[].owner`:负责人名字;与网站里某人的名字一致时,该模块会高亮成他的色。
 - `modules[].dependsOn`:依赖的模块 key 列表 → 画成箭头。

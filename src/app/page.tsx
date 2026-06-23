@@ -6,6 +6,7 @@ import { NEUTRAL } from "@/lib/colors";
 import { relativeTime } from "@/lib/time";
 import { Markdown } from "@/components/Markdown";
 import { BoardClient } from "@/components/BoardClient";
+import { ClockOffButton } from "@/components/ClockOffButton";
 import { ActivityBar, type ActivityItem } from "@/components/ActivityBar";
 import { FeatureBoard } from "@/components/FeatureBoard";
 import { DecisionPanel } from "@/components/DecisionPanel";
@@ -40,13 +41,22 @@ export default async function HomePage() {
       active: h?.active ?? false,
       activeKind: h?.kind ?? null,
       activeBy: h?.activeBy ?? null,
-      activeUsers: (h?.activeUsers ?? []).map((u) => ({ name: u.name, ago: u.at ? relativeTime(u.at) : "" })),
+      activeUsers: (h?.activeUsers ?? []).map((u) => ({
+        name: u.name,
+        ago: u.at ? relativeTime(u.at) : "",
+        color: colorOf[u.name] ?? NEUTRAL,
+      })),
       conflict: h?.conflict ?? false,
       posX: m.posX,
       posY: m.posY,
     };
   });
   const mapEdges: MapEdge[] = edges.map((e) => ({ id: e.id, source: e.fromId, target: e.toId, kind: e.kind }));
+
+  // 我当前是否有 git 来源的"在改"标记 —— 收工按钮只清这个(doing 派生的高亮由功能状态决定,清不掉)
+  const iAmActive = mapModules.some(
+    (m) => m.activeKind === "git" && m.activeUsers.some((u) => u.name === user.name),
+  );
 
   const drawerByKey: Record<string, DrawerData> = Object.fromEntries(
     modules.map((m) => [
@@ -113,6 +123,7 @@ export default async function HomePage() {
             <span className="inline-block h-3 w-3 rounded-full" style={{ background: user.color }} />
             {user.name}
           </span>
+          <ClockOffButton active={iAmActive} />
           <Link href="/onboarding" className="text-xs text-slate-400 hover:text-slate-700">
             切换
           </Link>

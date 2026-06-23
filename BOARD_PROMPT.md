@@ -21,6 +21,7 @@
 - **填 `paths` 能解锁“按 git 改动自动高亮”**:给每个模块写准它对应的代码路径 glob(如 `src/scene/**`)。
   之后任何人本地 `sync` 时,网站会看他当前分支改了哪些文件,命中某模块的 `paths` 就**自动把该模块高亮成他的颜色**(✎ 在改)——连标 `doing` 都不用。**强烈建议给每个模块都写好 `paths`。**
 - **`doing` 是另一种高亮**:把某 feature 标 `status: doing` + 写 `owner`,对应模块也会高亮(▶ 进行中)。适合“还没动代码、但这是下一步要做的”。
+- **`pipeline` 给出工艺主链**:顶层写一行模块 key 的有序列表 = 工件**数据流向**(如 `pipeline: [camera, weld_core, scene_widget]`)。看板据此把首页排成一条左→右的链、模块页显示“上游→本块→下游”。注意这是**数据怎么流**,跟 `dependsOn`(代码依赖)是两件事、方向常相反:相机把点云**喂给**焊接(数据流 camera→weld_core),但代码上是焊接**调用**相机(dependsOn weld_core→camera)。不在 `pipeline` 里的模块(如共享的 `transform`)= 旁路,自动画在主链下面。拿不准就**省略 pipeline**,退回按 `dependsOn` 看依赖。
 - 只写**有证据**的内容;拿不准的 `owner` / `status` 就省略或标 `todo`,不要编。
 - `key` 一旦定下**尽量别改**(改名 = 新模块,会丢它在看板上的位置)。
 - 同一个项目每次都用**同一个 `slug`**(否则会变成另一个项目)。
@@ -34,6 +35,7 @@ project:
   slug: <短横线小写唯一标识,如 weld-kaierda>
   techStack: |
     - <markdown 列统一技术栈 / 路线:语言、框架、构建、关键约定>
+pipeline: [<工艺主链:模块 key 有序列表 = 数据流向,可省略;不在链里的 = 旁路>]
 modules:
   - key: <稳定英文键,如 scene_widget>
     title: <模块名>

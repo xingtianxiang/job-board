@@ -65,7 +65,7 @@ export async function applyBoardMarkdown(raw: string, git?: GitInfo) {
     await prisma.module.deleteMany({ where: { projectId: project.id, key: { notIn: keepKeys } } });
   }
 
-  // 3) 边:从 dependsOn 重建
+  // 3) 边:从 dependsOn 重建(代码依赖)+ 从 pipeline 重建(工艺流向)
   await prisma.moduleEdge.deleteMany({ where: { projectId: project.id } });
   const all = await prisma.module.findMany({ where: { projectId: project.id } });
   const keyToId = new Map(all.map((m) => [m.key, m.id]));
@@ -78,7 +78,32 @@ export async function applyBoardMarkdown(raw: string, git?: GitInfo) {
       if (toId) edgeData.push({ projectId: project.id, fromId, toId, kind: "depends" });
     }
   }
+  // 工艺流:相邻 pipeline 成员之间连一条 flow 边(数据流向,与代码依赖无关、方向常相反)
+  const chainKeys = board.pipeline.filter((k) => keyToId.has(k));
+  for (let i = 0; i < chainKeys.length - 1; i++) {
+    edgeData.push({
+      projectId: project.id,
+      fromId: keyToId.get(chainKeys[i])!,
+      toId: keyToId.get(chainKeys[i + 1])!,
+      kind: "flow",
+    });
+  }
   if (edgeData.length) await prisma.moduleEdge.createMany({ data: edgeData });
+
+  // 3.5) 工艺流布局:声明了 pipeline 时由它接管位置 —— 主链横向一字排开,
+  //      不在链里的模块(共享旁路)落到下面一排。未声明则保留 gridPos / 历史位置。
+  if (chainKeys.length) {
+    const sideKeys = all.map((m) => m.key).filter((k) => !chainKeys.includes(k));
+    const layout = new Map<string, { posX: number; posY: number }>();
+    chainKeys.forEach((k, i) => layout.set(k, { posX: i * 240 + 40, posY: 60 }));
+    sideKeys.forEach((k, i) => layout.set(k, { posX: i * 240 + 40, posY: 320 }));
+    for (const m of all) {
+      const p = layout.get(m.key);
+      if (p && (p.posX !== m.posX || p.posY !== m.posY)) {
+        await prisma.module.update({ where: { id: m.id }, data: p });
+      }
+    }
+  }
 
   // 4) 决策
   for (const d of board.decisions) {
