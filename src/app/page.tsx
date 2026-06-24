@@ -159,11 +159,15 @@ export default async function HomePage() {
             </div>
             <FeatureBoard
               features={features.map((f) => ({
+                id: f.id,
                 title: f.title,
                 status: f.status,
                 moduleKey: f.moduleKey,
                 ownerName: f.ownerName,
+                body: f.body,
               }))}
+              members={members}
+              modules={modules.map((m) => ({ key: m.key, title: m.title }))}
               colorOf={colorOf}
               moduleOwnerByKey={moduleOwnerByKey}
             />
@@ -178,7 +182,12 @@ export default async function HomePage() {
             </section>
           )}
           <section>
-            <h2 className="mb-2 text-sm font-semibold text-slate-700">统一技术方案 / 决策</h2>
+            <div className="mb-2 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-slate-700">统一技术方案 / 决策</h2>
+              <Link href="/archive" className="text-xs text-slate-400 hover:text-slate-700">
+                已归档 →
+              </Link>
+            </div>
             <DecisionPanel
               decisions={decisions.map((d) => ({
                 title: d.title,

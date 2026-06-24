@@ -110,6 +110,7 @@ model Decision {
   moduleKey String?
   body      String    @default("") // markdown
   decidedAt DateTime?
+  archived  Boolean   @default(false) // 归档:不在主看板「统一技术方案/决策」显示,移到 /archive。与 feature 同款(DB-only,sync 不取消)
 
   @@unique([projectId, title])
 }

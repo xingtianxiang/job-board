@@ -18,7 +18,7 @@ export async function getBoard(projectId: string) {
     prisma.moduleEdge.findMany({ where: { projectId } }),
     prisma.user.findMany({ where: { projectId }, include: { presence: true }, orderBy: { name: "asc" } }),
     prisma.feature.findMany({ where: { projectId, archived: false }, orderBy: { title: "asc" } }),
-    prisma.decision.findMany({ where: { projectId }, orderBy: { decidedAt: "desc" } }),
+    prisma.decision.findMany({ where: { projectId, archived: false }, orderBy: { decidedAt: "desc" } }),
   ]);
   return { project, modules, edges, users, features, decisions };
 }
@@ -46,6 +46,14 @@ export async function getArchivedFeatures(projectId: string) {
   return prisma.feature.findMany({
     where: { projectId, archived: true },
     orderBy: { title: "asc" },
+  });
+}
+
+/** 已归档的技术决策(给 /archive 页面)。与 feature 归档同款:DB-only,sync 不取消。 */
+export async function getArchivedDecisions(projectId: string) {
+  return prisma.decision.findMany({
+    where: { projectId, archived: true },
+    orderBy: { decidedAt: "desc" },
   });
 }
 
@@ -231,7 +239,7 @@ export async function getModuleByKey(projectId: string, key: string) {
   if (!mod) return null;
   const [features, decisions, edgesOut, edgesIn, users] = await Promise.all([
     prisma.feature.findMany({ where: { projectId, moduleKey: key }, orderBy: { title: "asc" } }),
-    prisma.decision.findMany({ where: { projectId, moduleKey: key }, orderBy: { decidedAt: "desc" } }),
+    prisma.decision.findMany({ where: { projectId, moduleKey: key, archived: false }, orderBy: { decidedAt: "desc" } }),
     prisma.moduleEdge.findMany({ where: { fromId: mod.id }, include: { to: true } }),
     prisma.moduleEdge.findMany({ where: { toId: mod.id }, include: { from: true } }),
     prisma.user.findMany({ where: { projectId } }),

@@ -119,17 +119,10 @@ export async function applyBoardMarkdown(raw: string, git?: GitInfo) {
     where: { projectId: project.id, title: { notIn: board.decisions.map((d) => d.title) } },
   });
 
-  // 5) 功能
-  for (const f of board.features) {
-    await prisma.feature.upsert({
-      where: { projectId_title: { projectId: project.id, title: f.title } },
-      create: { projectId: project.id, title: f.title, status: f.status, moduleKey: f.module ?? null, ownerName: f.owner ?? null, body: f.body },
-      update: { status: f.status, moduleKey: f.module ?? null, ownerName: f.owner ?? null, body: f.body },
-    });
-  }
-  await prisma.feature.deleteMany({
-    where: { projectId: project.id, title: { notIn: board.features.map((f) => f.title) } },
-  });
+  // 5) 功能:已改为【UI 自管】—— 功能卡在网页上增/删/改/派负责人、存 DB(见 /api/feature)。
+  //    sync 故意【不再 upsert/prune 功能卡】:否则每 10 分钟的定时同步会拿 BOARD.md 把网页改动冲掉
+  //    (加的被 prune 删、负责人被覆盖成 null)。BOARD.md 的 features 段仅留历史,不再驱动看板。
+  const featureCount = await prisma.feature.count({ where: { projectId: project.id } });
 
   // 6) 按 git 改动自动高亮:在命中模块的 activeUsers 里【增量加上自己】;自己已不在改的模块只摘掉自己的条目
   //    (别人的条目不动)→ 支持一个模块多人在改、多分支多人互不覆盖。
@@ -205,7 +198,7 @@ export async function applyBoardMarkdown(raw: string, git?: GitInfo) {
       modules: board.modules.length,
       edges: edgeData.length,
       decisions: board.decisions.length,
-      features: board.features.length,
+      features: featureCount,
       gitActive,
     },
     warnings: getBoardWarnings(board),
