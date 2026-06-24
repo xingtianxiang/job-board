@@ -55,7 +55,6 @@ const BoardSchema = z.object({
 });
 
 export type ParsedBoard = z.infer<typeof BoardSchema>;
-export type ParsedModule = z.infer<typeof ModuleSchema>;
 
 export class BoardParseError extends Error {}
 

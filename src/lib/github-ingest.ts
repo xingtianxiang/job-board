@@ -28,7 +28,6 @@ export const githubPayloadSchema = z.object({
 });
 
 export type GithubPayload = z.infer<typeof githubPayloadSchema>;
-export type GithubCommit = z.infer<typeof githubCommitSchema>;
 
 /** 落库一批 GitHub 提交。project 只需 id。返回计数(commits / files / 未命中模块数)。 */
 export async function applyGithubCommits(project: { id: string }, payload: GithubPayload) {
